@@ -63,6 +63,18 @@ def all_stats(series: pd.Series) -> Dict[str, Any]:
     Calcula todas las medidas de tendencia central y dispersión.
     Devuelve un diccionario con los valores y las fórmulas/referencias.
     """
+    if not pd.api.types.is_numeric_dtype(series):
+        vacio = ("No se puede calcular para variables cualitativas", "", "")
+        moda = mode(series)
+        return {
+            'Moda': (moda, '', 'https://es.wikipedia.org/wiki/Moda_(estad%C3%ADstica)'),
+            'Media aritmética': vacio,
+            'Mediana': vacio,
+            'Rango': vacio,
+            'Varianza': vacio,
+            'Desviación estándar': vacio,
+            'Coeficiente de variación (%)': vacio
+        }
     return {
         'Media aritmética': (mean(series), 'x̄ = (1/N) * Σxᵢ', 'https://es.wikipedia.org/wiki/Media_aritm%C3%A9tica'),
         'Mediana': (median(series), '', 'https://es.wikipedia.org/wiki/Mediana'),

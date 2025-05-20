@@ -50,7 +50,10 @@ class FrequencyDialog(QDialog):
         
         stats = distribution.get_summary_stats()
         for key, value in stats.items():
-            summary_layout.addRow(f"{key}:", QLabel(f"{value:.4f}"))
+            if isinstance(value, (int, float)):
+                summary_layout.addRow(f"{key}:", QLabel(f"{value:.4f}"))
+            else:
+                summary_layout.addRow(f"{key}:", QLabel(str(value)))
             
         summary_group.setLayout(summary_layout)
         layout.addWidget(summary_group)
