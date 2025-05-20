@@ -23,7 +23,19 @@ class FrequencyDistribution:
             DataFrame con la distribución de frecuencias
         """
         data = []
-        
+        # Detectar si es cualitativa (DummyInterval)
+        if not hasattr(self.intervals[0], 'lower_real'):
+            for interval in self.intervals:
+                interval_str = str(interval)
+                data.append({
+                    'Grupo/Categoría': interval_str,
+                    'Frecuencia Absoluta (fᵢ)': self.absolute_freq[interval_str],
+                    'Frecuencia Relativa (hᵢ)': self.relative_freq[interval_str],
+                    'Frecuencia Acumulada (Fᵢ)': self.cumulative_freq[interval_str],
+                    'Frecuencia Relativa Acumulada (Hᵢ)': self.cumulative_relative_freq[interval_str]
+                })
+            return pd.DataFrame(data)
+        # Si es cuantitativa, flujo normal
         for interval in self.intervals:
             interval_str = str(interval)
             data.append({
@@ -36,7 +48,6 @@ class FrequencyDistribution:
                 'Frecuencia Acumulada (Fᵢ)': self.cumulative_freq[interval_str],
                 'Frecuencia Relativa Acumulada (Hᵢ)': self.cumulative_relative_freq[interval_str]
             })
-            
         return pd.DataFrame(data)
         
     def get_summary_stats(self) -> Dict[str, float]:
