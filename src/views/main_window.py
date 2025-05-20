@@ -201,6 +201,10 @@ class MainWindow(QMainWindow):
         column = self.column_combo.currentText()
         if not column:
             return
+        var_type = self.data_model.variable_types.get(column)
+        if var_type not in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            QMessageBox.warning(self, "Error", "Solo se pueden calcular medidas estadísticas para columnas numéricas.")
+            return
         dialog = StatisticsDialog(self.data_model.data[column], self)
         dialog.exec()
         self.status_label.setText(f"Medidas estadísticas mostradas para {column}")
@@ -301,6 +305,9 @@ class MainWindow(QMainWindow):
         for i in range(len(df)):
             for j in range(len(df.columns)):
                 value = str(df.iloc[i, j])
+                # Si la columna es de nombres, mostrar solo la primera letra de cada palabra
+                if 'nombre' in df.columns[j].lower():
+                    value = ''.join([w[0] for w in value.split() if w])
                 self.data_table.setItem(i, j, QTableWidgetItem(value))
                 
         # Ajustar tamaño de columnas

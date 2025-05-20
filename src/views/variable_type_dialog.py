@@ -4,6 +4,18 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
 from PyQt6.QtCore import Qt
 from src.utils.variable_detector import VariableType
 
+# Mapeo para mostrar solo dos tipos al usuario
+DISPLAY_TYPE_MAP = {
+    VariableType.CATEGORICAL_NOMINAL: 'Cualitativa',
+    VariableType.CATEGORICAL_ORDINAL: 'Cualitativa',
+    VariableType.NUMERICAL_DISCRETE: 'Cuantitativa',
+    VariableType.NUMERICAL_CONTINUOUS: 'Cuantitativa',
+}
+REVERSE_DISPLAY_TYPE_MAP = {
+    'Cualitativa': VariableType.CATEGORICAL_NOMINAL,
+    'Cuantitativa': VariableType.NUMERICAL_CONTINUOUS,
+}
+
 class VariableTypeDialog(QDialog):
     def __init__(self, variable_types: dict, parent=None):
         super().__init__(parent)
@@ -32,17 +44,15 @@ class VariableTypeDialog(QDialog):
         for i, (var_name, var_type) in enumerate(variable_types.items()):
             # Nombre de la variable
             self.table.setItem(i, 0, QTableWidgetItem(var_name))
-            
-            # ComboBox para el tipo
+            # ComboBox para el tipo (solo dos opciones)
             type_combo = QComboBox()
-            for vtype in VariableType:
-                type_combo.addItem(vtype.value)
-                if vtype == var_type:
-                    type_combo.setCurrentText(vtype.value)
+            for display_type in ['Cuantitativa', 'Cualitativa']:
+                type_combo.addItem(display_type)
+                if display_type == DISPLAY_TYPE_MAP[var_type]:
+                    type_combo.setCurrentText(display_type)
             type_combo.currentTextChanged.connect(
                 lambda text, row=i: self.update_type(row, text))
             self.table.setCellWidget(i, 1, type_combo)
-            
         layout.addWidget(self.table)
         
         # Botones
@@ -57,17 +67,9 @@ class VariableTypeDialog(QDialog):
         layout.addLayout(button_layout)
         
     def update_type(self, row: int, new_type: str):
-        """
-        Actualiza el tipo de variable cuando el usuario lo cambia
-        """
         var_name = self.table.item(row, 0).text()
-        for vtype in VariableType:
-            if vtype.value == new_type:
-                self.result_types[var_name] = vtype
-                break
-                
+        # Almacenar como tipo detallado (por defecto: nominal para cualitativa, continua para cuantitativa)
+        self.result_types[var_name] = REVERSE_DISPLAY_TYPE_MAP[new_type]
+        
     def get_variable_types(self) -> dict:
-        """
-        Retorna los tipos de variables (posiblemente modificados)
-        """
         return self.result_types 
