@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Any
+from utils.variable_detector import VariableDetector, VariableType
 
 class DataModel:
     def __init__(self):
         self.data: Optional[pd.DataFrame] = None
-        self.variable_types: Dict[str, str] = {}
+        self.variable_types: Dict[str, VariableType] = {}
+        self.detector = VariableDetector()
         
     def load_data(self, file_path: str) -> bool:
         """
@@ -38,14 +40,7 @@ class DataModel:
         if self.data is None:
             return
             
-        for column in self.data.columns:
-            # Implementación básica - se mejorará con heurísticas más sofisticadas
-            if self.data[column].dtype == 'object':
-                self.variable_types[column] = 'categorical'
-            elif self.data[column].dtype in ['int64', 'int32']:
-                self.variable_types[column] = 'discrete'
-            else:
-                self.variable_types[column] = 'continuous'
+        self.variable_types = self.detector.detect_variable_types(self.data)
                 
     def get_basic_stats(self, column: str) -> Dict[str, Any]:
         """
@@ -68,4 +63,13 @@ class DataModel:
             'max': self.data[column].max()
         }
         
-        return stats 
+        return stats
+        
+    def update_variable_types(self, new_types: Dict[str, VariableType]):
+        """
+        Actualiza los tipos de variables
+        
+        Args:
+            new_types: Nuevo diccionario de tipos de variables
+        """
+        self.variable_types = new_types 

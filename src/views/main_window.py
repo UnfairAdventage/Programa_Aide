@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTableWidget, QTableWidgetItem)
 from PyQt6.QtCore import Qt
 from .manual_input_dialog import ManualInputDialog
+from .variable_type_dialog import VariableTypeDialog
 from models.data_model import DataModel
 
 class MainWindow(QMainWindow):
@@ -44,6 +45,12 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(buttons_layout)
         
+        # Botón para revisar tipos de variables
+        self.review_types_button = QPushButton("Revisar Tipos de Variables")
+        self.review_types_button.clicked.connect(self.show_variable_types)
+        self.review_types_button.setEnabled(False)  # Deshabilitado hasta que haya datos
+        layout.addWidget(self.review_types_button)
+        
         # Tabla para mostrar datos
         self.data_table = QTableWidget()
         layout.addWidget(self.data_table)
@@ -71,6 +78,7 @@ class MainWindow(QMainWindow):
         if file_name:
             if self.data_model.load_data(file_name):
                 self.update_data_display()
+                self.review_types_button.setEnabled(True)
                 self.status_label.setText(f"Datos cargados exitosamente desde: {file_name}")
             else:
                 QMessageBox.critical(self, "Error", "No se pudo cargar el archivo")
@@ -84,7 +92,20 @@ class MainWindow(QMainWindow):
             self.data_model.data = df
             self.data_model._detect_variable_types()
             self.update_data_display()
+            self.review_types_button.setEnabled(True)
             self.status_label.setText("Datos ingresados manualmente")
+            
+    def show_variable_types(self):
+        """Muestra el diálogo para revisar tipos de variables"""
+        if self.data_model.data is None:
+            return
+            
+        dialog = VariableTypeDialog(self.data_model.variable_types, self)
+        if dialog.exec():
+            # Actualizar tipos de variables
+            new_types = dialog.get_variable_types()
+            self.data_model.update_variable_types(new_types)
+            self.status_label.setText("Tipos de variables actualizados")
             
     def update_data_display(self):
         """Actualiza la tabla con los datos cargados"""

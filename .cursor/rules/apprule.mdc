@@ -64,7 +64,7 @@ Automatizar la sincronización entre el plan de proyecto (`PLAN.md`) y la lista 
 
 ## 4. Marcadores y Actualización
 
-En `Task_List.md` debe existir o insertarse el marcador:
+En [Task_List.md](mdc:Task_List.md) debe existir o insertarse el marcador:
 
 ```html
 <!-- TASK_SUMMARY_TABLE -->
@@ -86,4 +86,7 @@ La regla busca este marcador y coloca la tabla justo debajo. Si no existe, inser
 ---
 
 *Fin de la regla de cursor.*
+
+
+
 
