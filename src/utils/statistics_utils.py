@@ -87,8 +87,8 @@ def all_stats(series: pd.Series) -> Dict[str, Any]:
         }
     return {
         'Media aritmética': (mean(series), 'x̄ = (1/N) * Σxᵢ', 'https://es.wikipedia.org/wiki/Media_aritm%C3%A9tica'),
-        'Mediana': (median(series), '', 'https://es.wikipedia.org/wiki/Mediana'),
-        'Moda': (mode(series), '', 'https://es.wikipedia.org/wiki/Moda_(estad%C3%ADstica)'),
+        'Mediana': (median(series), 'Valor intermedio de un grupo de datos ordenados', 'https://es.wikipedia.org/wiki/Mediana'),
+        'Moda': (mode(series), 'Valor que más se repite en un grupo de datos', 'https://es.wikipedia.org/wiki/Moda_(estad%C3%ADstica)'),
         'Rango': (data_range(series), 'R = max(xᵢ) - min(xᵢ)', 'https://es.wikipedia.org/wiki/Rango_(estad%C3%ADstica)'),
         'Varianza': (variance(series), 's² = (1/(N-1)) * Σ(xᵢ - x̄)²', 'https://es.wikipedia.org/wiki/Varianza'),
         'Desviación estándar': (std_dev(series), 's = sqrt(varianza)', 'https://es.wikipedia.org/wiki/Desviaci%C3%B3n_t%C3%ADpica'),

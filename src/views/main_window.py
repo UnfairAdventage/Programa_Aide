@@ -296,24 +296,39 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Polígono de frecuencia mostrado para {column}")
     
     def show_pie_chart(self):
-        """Muestra el diagrama de pastel para variables categóricas"""
+        """Muestra el diagrama de pastel para variables categóricas y cuantitativas"""
         if self.data_model.data is None:
             return
         column = self.column_combo.currentText()
         if not column:
             return
         var_type = self.data_model.variable_types.get(column)
-        if var_type not in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
-            QMessageBox.information(self, "No válido", "El diagrama de pastel solo es válido para variables categóricas.")
-            return
-        series = self.data_model.data[column].astype(str)
-        if series.nunique(dropna=True) > 15:
-            grouped = group_by_initial_pairs(series)
-            counts = grouped.value_counts().sort_index()
-            plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column} (agrupado por iniciales)")
+        series = self.data_model.data[column]
+
+        if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
+            # Para variables categóricas
+            series_str = series.astype(str)
+            if series_str.nunique(dropna=True) > 15:
+                grouped = group_by_initial_pairs(series_str)
+                counts = grouped.value_counts().sort_index()
+                plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column} (agrupado por iniciales)")
+            else:
+                counts = series_str.value_counts()
+                plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
+        elif var_type in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            # Para variables cuantitativas
+            distribution = self.data_model.get_frequency_distribution(column)
+            if distribution:
+                frequencies = [distribution.absolute_freq[str(interval)] for interval in distribution.intervals]
+                labels = [f"{interval.lower_nominal:.2f} - {interval.upper_nominal:.2f}" for interval in distribution.intervals]
+                plot_pie(frequencies, labels, title=f"Diagrama de pastel: {column} (Frecuencias por intervalo)")
+            else:
+                QMessageBox.warning(self, "Error", "No se pudo calcular la distribución de frecuencias")
+                return
         else:
-            counts = series.value_counts()
-            plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
+            QMessageBox.information(self, "No válido", "El diagrama de pastel solo es válido para variables categóricas o cuantitativas.")
+            return
+
         self.status_label.setText(f"Diagrama de pastel mostrado para {column}")
             
     def update_column_selector(self):
@@ -346,7 +361,7 @@ class MainWindow(QMainWindow):
         self.stats_button.setEnabled(has_numeric)
         self.hist_button.setEnabled(has_numeric)
         self.poly_button.setEnabled(has_numeric)
-        self.pie_button.setEnabled(has_categorical)
+        self.pie_button.setEnabled(has_numeric or has_categorical)
             
     def update_data_display(self):
         """Actualiza la tabla con los datos cargados"""
