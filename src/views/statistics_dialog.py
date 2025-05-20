@@ -72,6 +72,7 @@ class StatisticsDialog(QDialog):
                 "<li><a href='https://es.wikipedia.org/wiki/Rango_(estad%C3%ADstica)'>Rango</a>: extensión total de los datos.</li>"
                 "<li><a href='https://es.wikipedia.org/wiki/Varianza'>Varianza</a>: dispersión respecto a la media.</li>"
                 "<li><a href='https://es.wikipedia.org/wiki/Desviaci%C3%B3n_t%C3%ADpica'>Desviación estándar</a>: raíz de la varianza.</li>"
+                "<li><a href='https://es.wikipedia.org/wiki/Desviaci%C3%B3n_media'>Desviación media</a>: promedio de las desviaciones absolutas respecto a la media.</li>"
                 "<li><a href='https://economipedia.com/definiciones/coeficiente-de-variacion.html'>Coeficiente de variación</a>: dispersión relativa (%).</li>"
                 "</ul>"
             )

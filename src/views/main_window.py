@@ -165,16 +165,17 @@ class MainWindow(QMainWindow):
         """Muestra el diálogo de agrupación"""
         if self.data_model.data is None:
             return
-            
         column = self.column_combo.currentText()
         if not column:
             return
-            
         dialog = GroupingDialog(self.data_model.data[column], self)
         if dialog.exec():
             # Actualizar agrupación
             grouping_info = dialog.get_grouping_info()
             self.data_model.update_grouping(column, grouping_info)
+            # Eliminar la distribución de frecuencias previa para forzar recálculo
+            if column in self.data_model.frequency_distributions:
+                del self.data_model.frequency_distributions[column]
             self.status_label.setText(f"Datos agrupados para {column}")
             
     def show_frequency_distribution(self):

@@ -98,9 +98,14 @@ class FrequencyCalculator:
         """
         # Calcular frecuencias absolutas
         absolute_freq = {}
-        for interval in intervals:
-            count = len(data[(data >= interval.lower_nominal) & 
-                           (data < interval.upper_nominal)])
+        for i, interval in enumerate(intervals):
+            # El último intervalo debe incluir el límite superior nominal
+            if i == len(intervals) - 1:
+                count = len(data[(data >= interval.lower_nominal) & 
+                               (data <= interval.upper_nominal)]) # Usar <= para el último intervalo
+            else:
+                count = len(data[(data >= interval.lower_nominal) & 
+                               (data < interval.upper_nominal)])
             absolute_freq[str(interval)] = count
             
         # Calcular total de observaciones

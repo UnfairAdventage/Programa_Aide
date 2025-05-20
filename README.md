@@ -210,8 +210,16 @@ Algoritmo AnalisisEstadistico
                 Permitir agrupación, frecuencias, todas las medidas, histogramas, polígonos
                 Calcular y mostrar:
                     - Tabla de frecuencias
-                    - Medidas de tendencia y dispersión (media, mediana, moda, rango, varianza, desviación estándar, coeficiente de variación)
-                    - Histograma y polígono de frecuencia
+                    - Medidas de tendencia y dispersión:
+                        * Media aritmética
+                        * Mediana
+                        * Moda
+                        * Rango
+                        * Varianza
+                        * Desviación estándar
+                        * Desviación media
+                        * Coeficiente de variación
+                    - Histograma y polígono de frecuencia juntos
             Sino // es cualitativa
                 Si la cantidad de valores únicos > 15 entonces
                     Agrupar por pares de iniciales (A-B, C-D, ...)
@@ -222,8 +230,16 @@ Algoritmo AnalisisEstadistico
                     Calcular frecuencias por valor
                     Mostrar tabla de frecuencias y diagrama de pastel
                 FinSi
+                Mostrar histograma y polígono de frecuencia juntos
                 Mostrar solo la moda como medida de tendencia
-                Mostrar mensaje "No se puede calcular" para media, mediana y medidas de dispersión
+                Mostrar mensaje "No se puede calcular" para:
+                    * Media aritmética
+                    * Mediana
+                    * Rango
+                    * Varianza
+                    * Desviación estándar
+                    * Desviación media
+                    * Coeficiente de variación
             FinSi
         FinSi
     FinMientras
@@ -239,19 +255,25 @@ flowchart TD
     C --> D[Mostrar tabla de datos]
     D --> E[Revisar/corregir tipos]
     E --> F{Seleccionar columna}
-    F -->|Cuantitativa| G[Permitir agrupación, frecuencias, medidas, gráficos]
+    F -->|Cuantitativa| G[Permitir agrupación]
     F -->|Cualitativa| H{¿Más de 15 valores únicos?}
-    H -->|Sí| I[Agrupar por pares de iniciales]
-    H -->|No| J[Frecuencias por valor]
-    I --> K[Mostrar tabla y pastel agrupados]
-    J --> L[Mostrar tabla y pastel normales]
-    K --> M[Mostrar solo moda, resto "No se puede calcular"]
-    L --> M
-    G --> N[Mostrar todas las medidas y gráficos]
-    M --> O{¿Otra columna?}
-    N --> O
-    O -->|Sí| F
-    O -->|No| P[Fin]
+    
+    G --> I[Calcular todas las medidas]
+    I --> J[Mostrar tabla de frecuencias]
+    J --> K[Mostrar medidas de tendencia y dispersión]
+    K --> L[Mostrar histograma y polígono juntos]
+    
+    H -->|Sí| M[Agrupar por pares de iniciales]
+    H -->|No| N[Frecuencias por valor]
+    M --> O[Mostrar tabla y pastel agrupados]
+    N --> P[Mostrar tabla y pastel normales]
+    O --> Q[Mostrar solo moda]
+    P --> Q
+    
+    L --> R{¿Otra columna?}
+    Q --> R
+    R -->|Sí| F
+    R -->|No| S[Fin]
 ```
 
 ## Análisis de variables cualitativas
@@ -265,15 +287,3 @@ flowchart TD
 - Al seleccionar cualquier variable (cuantitativa o cualitativa), el programa muestra el histograma y el polígono de frecuencia juntos en una sola ventana, uno encima del otro, usando colores diferenciados para facilitar la interpretación.
 - Para variables cualitativas con muchas categorías, la agrupación por iniciales también se refleja en ambos gráficos.
 
-## Pseudocódigo actualizado (fragmento relevante)
-
-```pseudocode
-Si la columna es cualitativa entonces
-    Calcular frecuencias (agrupadas si hay muchas categorías)
-    Mostrar tabla de frecuencias
-    Mostrar histograma y polígono de frecuencia juntos
-    Mostrar diagrama de pastel
-    Mostrar solo la moda como medida de tendencia central
-    Mostrar mensaje "No se puede calcular" para media, mediana y medidas de dispersión
-FinSi
-``` 

@@ -58,6 +58,15 @@ def coef_variation(series: pd.Series) -> float:
     std_val = std_dev(series)
     return (std_val / abs(mean_val)) * 100 if mean_val != 0 else float('nan')
 
+def mean_deviation(series: pd.Series) -> float:
+    """
+    Calcula la desviación media (media de los valores absolutos respecto a la media aritmética).
+    Fórmula: DM = (1/N) * Σ|xᵢ - x̄|
+    Referencia: https://es.wikipedia.org/wiki/Desviaci%C3%B3n_media
+    """
+    mean_val = mean(series)
+    return np.mean(np.abs(series - mean_val))
+
 def all_stats(series: pd.Series) -> Dict[str, Any]:
     """
     Calcula todas las medidas de tendencia central y dispersión.
@@ -73,6 +82,7 @@ def all_stats(series: pd.Series) -> Dict[str, Any]:
             'Rango': vacio,
             'Varianza': vacio,
             'Desviación estándar': vacio,
+            'Desviación media': vacio,
             'Coeficiente de variación (%)': vacio
         }
     return {
@@ -82,5 +92,6 @@ def all_stats(series: pd.Series) -> Dict[str, Any]:
         'Rango': (data_range(series), 'R = max(xᵢ) - min(xᵢ)', 'https://es.wikipedia.org/wiki/Rango_(estad%C3%ADstica)'),
         'Varianza': (variance(series), 's² = (1/(N-1)) * Σ(xᵢ - x̄)²', 'https://es.wikipedia.org/wiki/Varianza'),
         'Desviación estándar': (std_dev(series), 's = sqrt(varianza)', 'https://es.wikipedia.org/wiki/Desviaci%C3%B3n_t%C3%ADpica'),
+        'Desviación media': (mean_deviation(series), 'DM = (1/N) * Σ|xᵢ - x̄|', 'https://es.wikipedia.org/wiki/Desviaci%C3%B3n_media'),
         'Coeficiente de variación (%)': (coef_variation(series), 'CV = s / |x̄| * 100%', 'https://economipedia.com/definiciones/coeficiente-de-variacion.html')
     } 

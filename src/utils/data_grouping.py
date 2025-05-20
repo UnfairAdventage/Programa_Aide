@@ -67,12 +67,17 @@ class DataGrouping:
             num_classes, class_width = self.calculate_sturges_classes(data)
             
         min_value = data.min()
+        max_value = data.max() # Obtener el valor máximo real
         intervals = []
         
         for i in range(num_classes):
             lower_nominal = min_value + i * class_width
             upper_nominal = lower_nominal + class_width
             
+            # Ajustar el último límite superior nominal para incluir el valor máximo
+            if i == num_classes - 1:
+                upper_nominal = max(upper_nominal, max_value) # Asegurar que cubra el máximo
+
             # Calcular límites reales
             lower_real = lower_nominal - (self.measurement_unit / 2)
             upper_real = upper_nominal + (self.measurement_unit / 2)
@@ -90,26 +95,60 @@ class DataGrouping:
             
         return intervals
         
-    def calculate_frequencies(self, data: pd.Series, 
+    def calculate_frequencies(self, data: pd.Series,
                             intervals: List[ClassInterval]) -> Dict[str, int]:
         """
-        Calcula las frecuencias para cada intervalo de clase
-        
+        Calcula las frecuencias para cada intervalo de clase usando pd.cut
+        de manera robusta, asegurando que todos los datos se incluyan.
+
         Args:
             data: Serie de datos numéricos
-            intervals: Lista de intervalos de clase
-            
+            intervals: Lista de objetos ClassInterval
+
         Returns:
-            Diccionario con frecuencias por intervalo
+            Diccionario con frecuencias por intervalo (etiquetas de intervalo como claves)
         """
-        frequencies = {}
+        # Asegurarse de trabajar con datos numéricos y eliminar NaNs
+        numeric_data = data.dropna()
+        if numeric_data.empty:
+            return {}
+
+        # Definir los bordes de los bins para pd.cut.
+        # Usamos los límites inferiores de cada intervalo como bordes de inicio.
+        # El último borde es el límite superior nominal del último intervalo + una pequeña tolerancia.
+        bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal + 1e-9]
         
-        for interval in intervals:
-            # Contar valores que caen en el intervalo
-            count = len(data[(data >= interval.lower_nominal) & 
-                           (data < interval.upper_nominal)])
-            frequencies[str(interval)] = count
-            
+        # Crear etiquetas para los intervalos usando la representación string de ClassInterval.
+        interval_labels = [str(interval) for interval in intervals]
+        
+        try:
+            # Usar pd.cut con right=False para obtener intervalos cerrados a la izquierda [a, b).
+            # include_lowest=True asegura que el valor mínimo se incluya en el primer bin [min, ...).
+            # La tolerancia en el último bin asegura que el valor máximo caiga dentro del último intervalo.
+            cut_series = pd.cut(numeric_data, bins=bins, right=False, include_lowest=True, labels=interval_labels)
+
+            # Contar las ocurrencias en cada bin
+            frequencies_counts = cut_series.value_counts().sort_index()
+
+            # Convertir a diccionario. Asegurar que todas las etiquetas de intervalo estén presentes, incluso con 0.
+            frequencies = {str(label): frequencies_counts.get(label, 0) for label in interval_labels}
+
+            # **Verificación final:** Aunque pd.cut debería hacerlo, una comprobación simple
+            # para asegurarse de que el total coincide es útil.
+            total_counted = sum(frequencies.values())
+            total_data = len(numeric_data)
+
+            if total_counted != total_data:
+                 # Esto indica que algo *muy* inusual está pasando con los datos o los bordes.
+                 # Lanzar una advertencia. No forzamos el total aquí para que el desajuste sea visible.
+                 print(f"Advertencia: El conteo de frecuencias ({total_counted}) no coincide con el total de datos no nulos ({total_data}).")
+                 # Podrías añadir una lógica para distribuir la diferencia si es crítico que el total sume.
+
+        except Exception as e:
+            print(f"Error al usar pd.cut: {e}")
+            # Si pd.cut falla (lo cual sería raro ahora), retornar 0 frecuencias o la lógica manual previa si prefieres.
+            frequencies = {str(label): 0 for label in interval_labels}
+
         return frequencies
         
     def should_group_data(self, data: pd.Series) -> bool:
