@@ -5,7 +5,7 @@ Este es un programa de análisis estadístico con interfaz gráfica desarrollado
 ## Características
 
 - Carga de datos desde archivos CSV y Excel
-- Detección automática de tipos de variables
+- Detección automática de tipos de variables (cuantitativa/cualitativa)
 - Cálculo de estadísticas descriptivas
 - Generación de gráficos estadísticos
 - Interfaz gráfica intuitiva
@@ -33,8 +33,120 @@ Este es un programa de análisis estadístico con interfaz gráfica desarrollado
 Para ejecutar el programa:
 
 ```bash
-python src/main.py
+python -m src.main
 ```
+
+## Guía paso a paso
+
+### 1. Iniciar el programa
+Ejecuta el comando anterior y se abrirá la ventana principal del programa.
+
+### 2. Cargar datos
+- Haz clic en **Cargar CSV** o **Cargar Excel** para seleccionar tu archivo de datos.
+- También puedes usar **Ingreso Manual** para introducir datos desde cero.
+
+### 3. Detección y revisión de tipos de variables
+- El programa detecta automáticamente si cada columna es **Cuantitativa** (números) o **Cualitativa** (categorías).
+- Puedes revisar y corregir los tipos haciendo clic en **Revisar Tipos de Variables**.
+
+### 4. Seleccionar columna para análisis
+- Usa el menú desplegable "Columna" para elegir la variable que deseas analizar.
+
+### 5. Análisis y visualización
+- **Agrupar Datos:** Si la variable es cuantitativa, puedes agrupar en intervalos usando la regla de Sturges o configurando manualmente.
+- **Ver Distribución de Frecuencias:** Muestra la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
+- **Medidas de Tendencia y Dispersión:**
+  - Si la variable es cuantitativa, verás media, mediana, moda, rango, varianza, desviación estándar y coeficiente de variación.
+  - Si es cualitativa, solo se muestra la moda (valor más frecuente).
+- **Histograma:** Muestra el histograma de frecuencias para variables cuantitativas.
+- **Polígono de Frecuencia:** Muestra el polígono de frecuencias para variables cuantitativas agrupadas.
+- **Diagrama de Pastel:** Muestra un gráfico de pastel para variables cualitativas.
+
+### 6. Interpretación
+- Las tablas y gráficos se muestran en la interfaz o en ventanas emergentes.
+- Puedes revisar los resultados y, si lo deseas, exportar los datos o gráficos (opcional, según versión).
+
+### 7. Corrección y nuevo análisis
+- Puedes volver a cargar datos, cambiar tipos de variables o seleccionar otra columna para repetir el análisis.
+
+## Ejemplos visuales
+
+A continuación se muestran ejemplos de la interfaz y de los gráficos generados por el programa:
+
+### Interfaz principal
+![Interfaz principal](docs/ejemplo_interfaz.png)
+
+### Histograma
+![Histograma](docs/ejemplo_histograma.png)
+
+### Polígono de frecuencia
+![Polígono de frecuencia](docs/ejemplo_poli.png)
+
+### Diagrama de pastel
+![Diagrama de pastel](docs/ejemplo_pastel.png)
+
+### Tabla de frecuencias
+![Tabla de frecuencias](docs/ejemplo_tabla_frecuencias.png)
+
+> **Nota:** Si no ves las imágenes, colócalas en la carpeta `docs/` con los nombres indicados o reemplaza por tus propios ejemplos.
+
+## Fórmulas y métodos de cálculo
+
+A continuación se detallan las fórmulas y métodos utilizados para cada estadístico y gráfico:
+
+### Tipos de variable
+- **Cuantitativa:** Variable numérica (discreta o continua).
+- **Cualitativa:** Variable categórica (nominal u ordinal).
+
+### Medidas de tendencia central y dispersión
+- **Media aritmética:**
+  - Fórmula: $\bar{x} = \frac{1}{N} \sum_{i=1}^N x_i$
+  - Pandas: `df['col'].mean()`
+  - [Referencia](https://es.wikipedia.org/wiki/Media_aritm%C3%A9tica)
+- **Mediana:**
+  - Valor central de la muestra ordenada.
+  - Pandas: `df['col'].median()`
+  - [Referencia](https://es.wikipedia.org/wiki/Mediana)
+- **Moda:**
+  - Valor que ocurre con mayor frecuencia.
+  - Pandas: `df['col'].mode()`
+  - [Referencia](https://es.wikipedia.org/wiki/Moda_(estad%C3%ADstica))
+- **Rango:**
+  - Fórmula: $R = \max(x_i) - \min(x_i)$
+  - Pandas: `df['col'].max() - df['col'].min()`
+  - [Referencia](https://es.wikipedia.org/wiki/Rango_(estad%C3%ADstica))
+- **Varianza (muestral):**
+  - Fórmula: $s^2 = \frac{1}{N-1} \sum (x_i - \bar{x})^2$
+  - Pandas: `df['col'].var()`
+  - [Referencia](https://es.wikipedia.org/wiki/Varianza)
+- **Desviación estándar:**
+  - Fórmula: $s = \sqrt{\text{varianza}}$
+  - Pandas: `df['col'].std()`
+  - [Referencia](https://es.wikipedia.org/wiki/Desviaci%C3%B3n_t%C3%ADpica)
+- **Coeficiente de variación:**
+  - Fórmula: $CV = \frac{s}{|\bar{x}|} \times 100\%$
+  - [Referencia](https://economipedia.com/definiciones/coeficiente-de-variacion.html)
+
+### Distribución de frecuencias
+- **Frecuencia absoluta (fᵢ):** Número de observaciones en cada clase.
+- **Frecuencia relativa (hᵢ):** $h_i = \frac{f_i}{N}$
+- **Frecuencia acumulada (Fᵢ):** Suma acumulativa de frecuencias absolutas.
+- **Frecuencia relativa acumulada (Hᵢ):** Suma acumulativa de frecuencias relativas.
+- **Intervalos de clase:** Calculados usando la regla de Sturges: $k = 1 + 3.322 \log_{10}(N)$
+- **Límites reales:** Se ajustan sumando/restando la mitad de la unidad de medida.
+- **Marca de clase:** Punto medio de cada intervalo.
+- **Método:** Se usa `pd.cut` y `value_counts` para agrupar y contar.
+
+### Gráficos
+- **Histograma:**
+  - `matplotlib.pyplot.hist(datos, bins=k)`
+  - Eje X: intervalos de clase, Eje Y: frecuencia absoluta.
+- **Polígono de frecuencia:**
+  - `matplotlib.pyplot.plot(marcas_clase, frecuencias, marker='o')`
+  - Se cierra al eje horizontal añadiendo 0 en los extremos.
+- **Diagrama de pastel:**
+  - `matplotlib.pyplot.pie(frecuencias, labels=etiquetas, autopct='%1.1f%%')`
+  - Solo para variables cualitativas.
 
 ## Estructura del Proyecto
 
@@ -46,9 +158,122 @@ python src/main.py
 │   ├── controllers/ # Controladores
 │   └── utils/       # Utilidades
 ├── requirements.txt
-└── README.md
+├── README.md
+└── docs/            # Imágenes de ejemplo
 ```
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. 
+Este proyecto está bajo la Licencia MIT.
+
+## Ejemplo de interpretación de resultados
+
+Supón que analizas la columna "height" de un grupo de estudiantes:
+- **Media:** 165.2 cm. Indica la estatura promedio del grupo.
+- **Mediana:** 165 cm. La mitad de los estudiantes mide menos y la otra mitad más de 165 cm.
+- **Moda:** 165 cm. Es la estatura más frecuente.
+- **Rango:** 10 cm. La diferencia entre el más alto y el más bajo.
+- **Varianza y desviación estándar:** Indican cuán dispersas están las estaturas respecto a la media.
+- **Coeficiente de variación:** Si es bajo, las estaturas son homogéneas; si es alto, hay mucha variabilidad.
+- **Histograma:** Permite ver si la distribución es simétrica, sesgada, bimodal, etc.
+- **Diagrama de pastel:** Si analizas una variable cualitativa como "color favorito", verás la proporción de cada categoría.
+
+**Interpretación:**
+- Si la media y la mediana son similares, la distribución es simétrica.
+- Si la moda es muy diferente, puede haber valores atípicos o agrupaciones.
+- Un rango pequeño y desviación baja indican poca variabilidad.
+- El histograma ayuda a identificar patrones o anomalías visualmente.
+
+## Recomendaciones de uso
+- Antes de analizar, revisa y corrige los tipos de variable.
+- Usa la agrupación solo para variables cuantitativas con muchos valores diferentes.
+- Interpreta los resultados considerando el contexto de los datos.
+- Usa los gráficos para comunicar hallazgos de forma visual.
+- Si tienes dudas sobre una medida, consulta la referencia incluida en la interfaz.
+- Exporta o guarda los resultados para documentar tu análisis.
+
+## Pseudocódigo detallado del funcionamiento principal
+
+```pseudocode
+Algoritmo AnalisisEstadistico
+    Iniciar programa
+    Mostrar ventana principal
+    Mientras el usuario no cierre la aplicación hacer
+        Esperar acción del usuario
+        Si el usuario carga datos entonces
+            Detectar tipo de variable (cuantitativa/cualitativa)
+            Mostrar datos en tabla
+            Permitir revisión/corrección de tipos
+        FinSi
+        Si el usuario selecciona una columna entonces
+            Si la columna es cuantitativa entonces
+                Permitir agrupación, frecuencias, todas las medidas, histogramas, polígonos
+                Calcular y mostrar:
+                    - Tabla de frecuencias
+                    - Medidas de tendencia y dispersión (media, mediana, moda, rango, varianza, desviación estándar, coeficiente de variación)
+                    - Histograma y polígono de frecuencia
+            Sino // es cualitativa
+                Si la cantidad de valores únicos > 15 entonces
+                    Agrupar por pares de iniciales (A-B, C-D, ...)
+                    Calcular frecuencias por grupo
+                    Mostrar tabla de frecuencias agrupada
+                    Mostrar diagrama de pastel agrupado
+                Sino
+                    Calcular frecuencias por valor
+                    Mostrar tabla de frecuencias y diagrama de pastel
+                FinSi
+                Mostrar solo la moda como medida de tendencia
+                Mostrar mensaje "No se puede calcular" para media, mediana y medidas de dispersión
+            FinSi
+        FinSi
+    FinMientras
+FinAlgoritmo
+```
+
+## Diagrama de flujo (Mermaid)
+
+```mermaid
+flowchart TD
+    A[Inicio] --> B{Cargar datos}
+    B -->|CSV/Excel/Manual| C[Detectar tipo de variable]
+    C --> D[Mostrar tabla de datos]
+    D --> E[Revisar/corregir tipos]
+    E --> F{Seleccionar columna}
+    F -->|Cuantitativa| G[Permitir agrupación, frecuencias, medidas, gráficos]
+    F -->|Cualitativa| H{¿Más de 15 valores únicos?}
+    H -->|Sí| I[Agrupar por pares de iniciales]
+    H -->|No| J[Frecuencias por valor]
+    I --> K[Mostrar tabla y pastel agrupados]
+    J --> L[Mostrar tabla y pastel normales]
+    K --> M[Mostrar solo moda, resto "No se puede calcular"]
+    L --> M
+    G --> N[Mostrar todas las medidas y gráficos]
+    M --> O{¿Otra columna?}
+    N --> O
+    O -->|Sí| F
+    O -->|No| P[Fin]
+```
+
+## Análisis de variables cualitativas
+
+- **Moda:** Es la única medida de tendencia central válida para variables cualitativas. El programa la muestra siempre en la tabla de medidas de tendencia central y coincide con la categoría más frecuente en el diagrama de pastel.
+- **Tabla de frecuencias:** Para cualquier variable cualitativa, se muestra la frecuencia absoluta, relativa, acumulada y relativa acumulada, agrupando por pares de iniciales si hay más de 15 categorías.
+- **Histograma y polígono de frecuencia:** Para variables cualitativas, ambos gráficos se muestran juntos (uno encima del otro) usando las frecuencias de cada categoría o grupo. El histograma usa barras y el polígono conecta los puntos de frecuencia, permitiendo comparar visualmente la distribución de las categorías.
+
+## Visualización conjunta de histograma y polígono
+
+- Al seleccionar cualquier variable (cuantitativa o cualitativa), el programa muestra el histograma y el polígono de frecuencia juntos en una sola ventana, uno encima del otro, usando colores diferenciados para facilitar la interpretación.
+- Para variables cualitativas con muchas categorías, la agrupación por iniciales también se refleja en ambos gráficos.
+
+## Pseudocódigo actualizado (fragmento relevante)
+
+```pseudocode
+Si la columna es cualitativa entonces
+    Calcular frecuencias (agrupadas si hay muchas categorías)
+    Mostrar tabla de frecuencias
+    Mostrar histograma y polígono de frecuencia juntos
+    Mostrar diagrama de pastel
+    Mostrar solo la moda como medida de tendencia central
+    Mostrar mensaje "No se puede calcular" para media, mediana y medidas de dispersión
+FinSi
+``` 

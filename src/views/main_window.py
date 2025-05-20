@@ -5,11 +5,12 @@ from PyQt6.QtCore import Qt
 from src.views.manual_input_dialog import ManualInputDialog
 from src.views.variable_type_dialog import VariableTypeDialog
 from src.views.grouping_dialog import GroupingDialog
-from src.views.frequency_dialog import FrequencyDialog
+from src.views.frequency_dialog import FrequencyDialog, group_by_initial_pairs
 from src.views.statistics_dialog import StatisticsDialog
 from src.models.data_model import DataModel
 from src.utils.variable_detector import VariableType
 from src.utils.plot_utils import plot_histogram, plot_frequency_polygon, plot_pie
+import matplotlib.pyplot as plt
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -216,15 +217,41 @@ class MainWindow(QMainWindow):
         column = self.column_combo.currentText()
         if not column:
             return
-        # Usar los mismos bins que la agrupación si existen
-        if column in self.data_model.grouped_data:
-            intervals = self.data_model.grouped_data[column]['intervals']
-            bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
+        var_type = self.data_model.variable_types.get(column)
+        series = self.data_model.data[column]
+        if var_type in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            if column in self.data_model.grouped_data:
+                intervals = self.data_model.grouped_data[column]['intervals']
+                bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
+            else:
+                intervals = self.data_model.grouping.create_class_intervals(series)
+                bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
+            plt.figure(figsize=(8, 4))
+            plt.hist(series, bins=bins, edgecolor='black', alpha=0.7, color='tab:blue')
+            plt.xlabel(column)
+            plt.ylabel('Frecuencia')
+            plt.title('Histograma')
+            plt.tight_layout()
+            plt.show()
         else:
-            # Calcular bins usando Sturges
-            intervals = self.data_model.grouping.create_class_intervals(self.data_model.data[column])
-            bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
-        plot_histogram(self.data_model.data[column], bins, xlabel=column)
+            series_str = series.astype(str)
+            if series_str.nunique(dropna=True) > 15:
+                grouped = group_by_initial_pairs(series_str)
+                freq = grouped.value_counts().sort_index()
+                x = freq.index
+                y = freq.values
+            else:
+                freq = series_str.value_counts().sort_index()
+                x = freq.index
+                y = freq.values
+            plt.figure(figsize=(8, 4))
+            plt.bar(x, y, color='tab:blue', alpha=0.7)
+            plt.xlabel(column)
+            plt.ylabel('Frecuencia')
+            plt.title('Histograma (Cualitativa)')
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.show()
         self.status_label.setText(f"Histograma mostrado para {column}")
     
     def show_frequency_polygon(self):
@@ -234,12 +261,41 @@ class MainWindow(QMainWindow):
         column = self.column_combo.currentText()
         if not column:
             return
-        distribution = self.data_model.get_frequency_distribution(column)
-        if distribution:
+        var_type = self.data_model.variable_types.get(column)
+        series = self.data_model.data[column]
+        if var_type in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            distribution = self.data_model.get_frequency_distribution(column)
             mc = [interval.class_mark for interval in distribution.intervals]
             f = [distribution.absolute_freq[str(interval)] for interval in distribution.intervals]
-            plot_frequency_polygon(mc, f, xlabel="Marca de clase", ylabel="Frecuencia", title=f"Polígono de frecuencias: {column}")
-            self.status_label.setText(f"Polígono de frecuencia mostrado para {column}")
+            plt.figure(figsize=(8, 4))
+            plt.plot(mc, f, marker='o', linestyle='-', color='tab:orange')
+            plt.xlabel('Marca de clase')
+            plt.ylabel('Frecuencia')
+            plt.title('Polígono de Frecuencia')
+            plt.tight_layout()
+            plt.show()
+        else:
+            series_str = series.astype(str)
+            if series_str.nunique(dropna=True) > 15:
+                grouped = group_by_initial_pairs(series_str)
+                freq = grouped.value_counts().sort_index()
+                x = range(len(freq.index))
+                y = freq.values
+                labels = freq.index
+            else:
+                freq = series_str.value_counts().sort_index()
+                x = range(len(freq.index))
+                y = freq.values
+                labels = freq.index
+            plt.figure(figsize=(8, 4))
+            plt.plot(x, y, marker='o', linestyle='-', color='tab:orange')
+            plt.xticks(x, labels, rotation=90)
+            plt.xlabel(column)
+            plt.ylabel('Frecuencia')
+            plt.title('Polígono de Frecuencia (Cualitativa)')
+            plt.tight_layout()
+            plt.show()
+        self.status_label.setText(f"Polígono de frecuencia mostrado para {column}")
     
     def show_pie_chart(self):
         """Muestra el diagrama de pastel para variables categóricas"""
@@ -248,13 +304,18 @@ class MainWindow(QMainWindow):
         column = self.column_combo.currentText()
         if not column:
             return
-        # Solo tiene sentido para variables categóricas
         var_type = self.data_model.variable_types.get(column)
         if var_type not in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
             QMessageBox.information(self, "No válido", "El diagrama de pastel solo es válido para variables categóricas.")
             return
-        counts = self.data_model.data[column].value_counts()
-        plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
+        series = self.data_model.data[column].astype(str)
+        if series.nunique(dropna=True) > 15:
+            grouped = group_by_initial_pairs(series)
+            counts = grouped.value_counts().sort_index()
+            plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column} (agrupado por iniciales)")
+        else:
+            counts = series.value_counts()
+            plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
         self.status_label.setText(f"Diagrama de pastel mostrado para {column}")
             
     def update_column_selector(self):
@@ -305,9 +366,14 @@ class MainWindow(QMainWindow):
         for i in range(len(df)):
             for j in range(len(df.columns)):
                 value = str(df.iloc[i, j])
-                # Si la columna es de nombres, mostrar solo la primera letra de cada palabra
-                if 'nombre' in df.columns[j].lower():
+                col_name = df.columns[j]
+                unique_count = df[col_name].nunique(dropna=True)
+                # Si la columna es de nombres y pocos valores únicos, mostrar iniciales
+                if 'nombre' in col_name.lower() and unique_count <= 15:
                     value = ''.join([w[0] for w in value.split() if w])
+                # Si hay más de 15 valores únicos, mostrar solo la primera palabra
+                elif unique_count > 15:
+                    value = value.split()[0] if value else ''
                 self.data_table.setItem(i, j, QTableWidgetItem(value))
                 
         # Ajustar tamaño de columnas

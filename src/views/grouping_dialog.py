@@ -56,7 +56,7 @@ class GroupingDialog(QDialog):
         
         # Checkbox para usar regla de Sturges
         self.use_sturges = QCheckBox("Usar Regla de Sturges")
-        self.use_sturges.setChecked(True)
+        self.use_sturges.setChecked(False)
         self.use_sturges.stateChanged.connect(self.toggle_sturges)
         layout.addWidget(self.use_sturges)
         

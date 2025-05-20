@@ -21,29 +21,39 @@ class StatisticsDialog(QDialog):
         # Calcular estadísticas
         stats = all_stats(data)
         if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
-            # Solo mostrar la moda
-            stats = {k: v for k, v in stats.items() if k.lower().startswith('moda')}
-        
-        # Tabla de medidas
-        self.table = QTableWidget()
-        self.table.setRowCount(len(stats))
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels([
-            "Medida", "Valor", "Fórmula", "Referencia"
-        ])
-        for i, (key, (value, formula, ref)) in enumerate(stats.items()):
-            self.table.setItem(i, 0, QTableWidgetItem(key))
-            if isinstance(value, float):
-                self.table.setItem(i, 1, QTableWidgetItem(f"{value:.4f}"))
-            elif isinstance(value, list):
-                self.table.setItem(i, 1, QTableWidgetItem(", ".join(str(v) for v in value)))
-            else:
-                self.table.setItem(i, 1, QTableWidgetItem(str(value)))
-            self.table.setItem(i, 2, QTableWidgetItem(formula))
-            self.table.setItem(i, 3, QTableWidgetItem(ref))
-        self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        layout.addWidget(self.table)
+            # Solo mostrar la moda como medida de tendencia central
+            moda = {k: v for k, v in stats.items() if k.lower().startswith('moda')}
+            vacio = ("No se puede calcular para variables cualitativas", "", "")
+            stats = {
+                'Moda': list(moda.values())[0] if moda else vacio,
+                'Media aritmética': vacio,
+                'Mediana': vacio,
+                'Rango': vacio,
+                'Varianza': vacio,
+                'Desviación estándar': vacio,
+                'Coeficiente de variación (%)': vacio
+            }
+        else:
+            # Tabla de medidas
+            self.table = QTableWidget()
+            self.table.setRowCount(len(stats))
+            self.table.setColumnCount(4)
+            self.table.setHorizontalHeaderLabels([
+                "Medida", "Valor", "Fórmula", "Referencia"
+            ])
+            for i, (key, (value, formula, ref)) in enumerate(stats.items()):
+                self.table.setItem(i, 0, QTableWidgetItem(key))
+                if isinstance(value, float):
+                    self.table.setItem(i, 1, QTableWidgetItem(f"{value:.4f}"))
+                elif isinstance(value, list):
+                    self.table.setItem(i, 1, QTableWidgetItem(", ".join(str(v) for v in value)))
+                else:
+                    self.table.setItem(i, 1, QTableWidgetItem(str(value)))
+                self.table.setItem(i, 2, QTableWidgetItem(formula))
+                self.table.setItem(i, 3, QTableWidgetItem(ref))
+            self.table.resizeColumnsToContents()
+            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            layout.addWidget(self.table)
         
         # Explicación
         explanation = QTextEdit()

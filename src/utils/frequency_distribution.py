@@ -46,6 +46,16 @@ class FrequencyDistribution:
         Returns:
             Dict con estadísticas resumen
         """
+        # Si los intervalos no tienen atributos numéricos, es cualitativa
+        if not hasattr(self.intervals[0], 'upper_nominal'):
+            return {
+                'Rango': 'No se puede calcular',
+                'Número de Clases': len(self.intervals),
+                'Intervalo de Clase': 'No se puede calcular',
+                'Unidad de Medida': 'No se puede calcular',
+                'UM/2': 'No se puede calcular',
+                'Total de Observaciones': self.total_observations
+            }
         return {
             'Rango': max(interval.upper_nominal for interval in self.intervals) - 
                     min(interval.lower_nominal for interval in self.intervals),

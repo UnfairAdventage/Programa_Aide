@@ -151,10 +151,41 @@ class DataModel:
         """
         if column in self.frequency_distributions:
             return self.frequency_distributions[column]
-            
         if self.data is None or column not in self.data.columns:
             return None
-            
+        var_type = self.variable_types.get(column)
+        if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
+            # Si hay más de 15 categorías, agrupar por pares de iniciales
+            series = self.data[column].astype(str)
+            if series.nunique(dropna=True) > 15:
+                from src.views.frequency_dialog import group_by_initial_pairs
+                grouped = group_by_initial_pairs(series)
+                freq_abs = grouped.value_counts().sort_index()
+            else:
+                freq_abs = series.value_counts().sort_index()
+            total = freq_abs.sum()
+            freq_rel = freq_abs / total
+            freq_acum = freq_abs.cumsum()
+            freq_rel_acum = freq_rel.cumsum()
+            # Crear un objeto FrequencyDistribution simulado para compatibilidad
+            class DummyInterval:
+                def __init__(self, label):
+                    self.label = label
+                def __str__(self):
+                    return str(self.label)
+            intervals = [DummyInterval(label) for label in freq_abs.index]
+            distribution = FrequencyDistribution(
+                intervals=intervals,
+                absolute_freq={str(i): v for i, v in zip(intervals, freq_abs.values)},
+                relative_freq={str(i): v for i, v in zip(intervals, freq_rel.values)},
+                cumulative_freq={str(i): v for i, v in zip(intervals, freq_acum.values)},
+                cumulative_relative_freq={str(i): v for i, v in zip(intervals, freq_rel_acum.values)},
+                measurement_unit=1.0,
+                total_observations=total
+            )
+            self.frequency_distributions[column] = distribution
+            return distribution
+        # Si es cuantitativa, flujo normal
         # Si la columna está agrupada, usar esos intervalos
         if column in self.grouped_data:
             grouping_info = self.grouped_data[column]
@@ -171,6 +202,5 @@ class DataModel:
                 intervals,
                 self.grouping.measurement_unit
             )
-            
         self.frequency_distributions[column] = distribution
         return distribution 
