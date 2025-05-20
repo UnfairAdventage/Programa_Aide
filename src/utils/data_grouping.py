@@ -62,7 +62,14 @@ class DataGrouping:
             
         Returns:
             Lista de intervalos de clase
+            
+        Raises:
+            ValueError: Si los datos no son numéricos
         """
+        # Validar que los datos sean numéricos
+        if not pd.api.types.is_numeric_dtype(data):
+            raise ValueError("Los datos deben ser numéricos para crear intervalos de clase")
+            
         if num_classes is None or class_width is None:
             num_classes, class_width = self.calculate_sturges_classes(data)
             

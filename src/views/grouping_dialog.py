@@ -91,31 +91,41 @@ class GroupingDialog(QDialog):
         
     def update_grouping(self):
         """Actualiza la agrupación y la tabla"""
-        # Actualizar unidad de medición
-        self.grouping.measurement_unit = self.unit_spin.value()
-        
-        # Calcular intervalos
-        if self.use_sturges.isChecked():
-            self.intervals = self.grouping.create_class_intervals(self.data)
-        else:
-            self.intervals = self.grouping.create_class_intervals(
-                self.data,
-                num_classes=self.classes_spin.value(),
-                class_width=self.width_spin.value()
-            )
+        try:
+            # Actualizar unidad de medición
+            self.grouping.measurement_unit = self.unit_spin.value()
             
-        # Actualizar controles
-        if self.intervals:
-            self.classes_spin.setValue(len(self.intervals))
-            self.width_spin.setValue(
-                self.intervals[0].upper_nominal - self.intervals[0].lower_nominal
-            )
+            # Calcular intervalos
+            if self.use_sturges.isChecked():
+                self.intervals = self.grouping.create_class_intervals(self.data)
+            else:
+                self.intervals = self.grouping.create_class_intervals(
+                    self.data,
+                    num_classes=self.classes_spin.value(),
+                    class_width=self.width_spin.value()
+                )
+                
+            # Actualizar controles
+            if self.intervals:
+                self.classes_spin.setValue(len(self.intervals))
+                self.width_spin.setValue(
+                    self.intervals[0].upper_nominal - self.intervals[0].lower_nominal
+                )
+                
+            # Calcular frecuencias
+            self.frequencies = self.grouping.calculate_frequencies(self.data, self.intervals)
             
-        # Calcular frecuencias
-        self.frequencies = self.grouping.calculate_frequencies(self.data, self.intervals)
-        
-        # Actualizar tabla
-        self.update_table()
+            # Actualizar tabla
+            self.update_table()
+            
+        except ValueError as e:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", str(e))
+            self.reject()
+        except Exception as e:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error", f"Error al actualizar la agrupación: {str(e)}")
+            self.reject()
         
     def update_table(self):
         """Actualiza la tabla con los intervalos y frecuencias"""

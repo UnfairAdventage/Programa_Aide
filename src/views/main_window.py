@@ -168,6 +168,13 @@ class MainWindow(QMainWindow):
         column = self.column_combo.currentText()
         if not column:
             return
+            
+        var_type = self.data_model.variable_types.get(column)
+        if var_type not in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            QMessageBox.warning(self, "Error", 
+                              "La agrupación solo está disponible para variables numéricas.")
+            return
+            
         dialog = GroupingDialog(self.data_model.data[column], self)
         if dialog.exec():
             # Actualizar agrupación
