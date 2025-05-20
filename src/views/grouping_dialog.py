@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidgetItem, QHeaderView, QCheckBox)
 from PyQt6.QtCore import Qt
 import pandas as pd
-from utils.data_grouping import DataGrouping, ClassInterval
+from src.utils.data_grouping import DataGrouping, ClassInterval
 
 class GroupingDialog(QDialog):
     def __init__(self, data: pd.Series, parent=None):

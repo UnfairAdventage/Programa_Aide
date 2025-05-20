@@ -2,12 +2,14 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QFileDialog, QMessageBox,
                              QTableWidget, QTableWidgetItem, QComboBox)
 from PyQt6.QtCore import Qt
-from .manual_input_dialog import ManualInputDialog
-from .variable_type_dialog import VariableTypeDialog
-from .grouping_dialog import GroupingDialog
-from .frequency_dialog import FrequencyDialog
-from models.data_model import DataModel
-from utils.variable_detector import VariableType
+from src.views.manual_input_dialog import ManualInputDialog
+from src.views.variable_type_dialog import VariableTypeDialog
+from src.views.grouping_dialog import GroupingDialog
+from src.views.frequency_dialog import FrequencyDialog
+from src.views.statistics_dialog import StatisticsDialog
+from src.models.data_model import DataModel
+from src.utils.variable_detector import VariableType
+from src.utils.plot_utils import plot_histogram, plot_frequency_polygon, plot_pie
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -74,6 +76,28 @@ class MainWindow(QMainWindow):
         self.frequency_button.clicked.connect(self.show_frequency_distribution)
         self.frequency_button.setEnabled(False)
         analysis_layout.addWidget(self.frequency_button)
+        
+        # Botón para ver medidas estadísticas
+        self.stats_button = QPushButton("Medidas de Tendencia y Dispersión")
+        self.stats_button.clicked.connect(self.show_statistics)
+        self.stats_button.setEnabled(False)
+        analysis_layout.addWidget(self.stats_button)
+        
+        # Botones de gráficos
+        self.hist_button = QPushButton("Histograma")
+        self.hist_button.clicked.connect(self.show_histogram)
+        self.hist_button.setEnabled(False)
+        analysis_layout.addWidget(self.hist_button)
+        
+        self.poly_button = QPushButton("Polígono de Frecuencia")
+        self.poly_button.clicked.connect(self.show_frequency_polygon)
+        self.poly_button.setEnabled(False)
+        analysis_layout.addWidget(self.poly_button)
+        
+        self.pie_button = QPushButton("Diagrama de Pastel")
+        self.pie_button.clicked.connect(self.show_pie_chart)
+        self.pie_button.setEnabled(False)
+        analysis_layout.addWidget(self.pie_button)
         
         layout.addLayout(analysis_layout)
         
@@ -170,6 +194,65 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", 
                               "No se pudo calcular la distribución de frecuencias")
             
+    def show_statistics(self):
+        """Muestra el diálogo de medidas de tendencia central y dispersión"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        dialog = StatisticsDialog(self.data_model.data[column], self)
+        dialog.exec()
+        self.status_label.setText(f"Medidas estadísticas mostradas para {column}")
+    
+    def show_histogram(self):
+        """Muestra el histograma de la columna seleccionada"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        # Usar los mismos bins que la agrupación si existen
+        if column in self.data_model.grouped_data:
+            intervals = self.data_model.grouped_data[column]['intervals']
+            bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
+        else:
+            # Calcular bins usando Sturges
+            intervals = self.data_model.grouping.create_class_intervals(self.data_model.data[column])
+            bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
+        plot_histogram(self.data_model.data[column], bins, xlabel=column)
+        self.status_label.setText(f"Histograma mostrado para {column}")
+    
+    def show_frequency_polygon(self):
+        """Muestra el polígono de frecuencia de la columna seleccionada"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        distribution = self.data_model.get_frequency_distribution(column)
+        if distribution:
+            mc = [interval.class_mark for interval in distribution.intervals]
+            f = [distribution.absolute_freq[str(interval)] for interval in distribution.intervals]
+            plot_frequency_polygon(mc, f, xlabel="Marca de clase", ylabel="Frecuencia", title=f"Polígono de frecuencias: {column}")
+            self.status_label.setText(f"Polígono de frecuencia mostrado para {column}")
+    
+    def show_pie_chart(self):
+        """Muestra el diagrama de pastel para variables categóricas"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        # Solo tiene sentido para variables categóricas
+        var_type = self.data_model.variable_types.get(column)
+        if var_type not in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
+            QMessageBox.information(self, "No válido", "El diagrama de pastel solo es válido para variables categóricas.")
+            return
+        counts = self.data_model.data[column].value_counts()
+        plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
+        self.status_label.setText(f"Diagrama de pastel mostrado para {column}")
+            
     def update_column_selector(self):
         """Actualiza el selector de columnas"""
         self.column_combo.clear()
@@ -178,19 +261,29 @@ class MainWindow(QMainWindow):
             self.column_combo.setEnabled(False)
             self.group_button.setEnabled(False)
             self.frequency_button.setEnabled(False)
+            self.stats_button.setEnabled(False)
+            self.hist_button.setEnabled(False)
+            self.poly_button.setEnabled(False)
+            self.pie_button.setEnabled(False)
             return
-            
-        # Agregar solo columnas numéricas
+        # Agregar columnas numéricas y categóricas
+        has_numeric = False
+        has_categorical = False
         for column in self.data_model.data.columns:
             var_type = self.data_model.variable_types.get(column)
-            if var_type in [VariableType.NUMERICAL_CONTINUOUS, 
-                          VariableType.NUMERICAL_DISCRETE]:
+            if var_type in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
                 self.column_combo.addItem(column)
-                
+                has_numeric = True
+            elif var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
+                self.column_combo.addItem(column)
+                has_categorical = True
         self.column_combo.setEnabled(True)
-        has_numeric_columns = self.column_combo.count() > 0
-        self.group_button.setEnabled(has_numeric_columns)
-        self.frequency_button.setEnabled(has_numeric_columns)
+        self.group_button.setEnabled(has_numeric)
+        self.frequency_button.setEnabled(has_numeric)
+        self.stats_button.setEnabled(has_numeric)
+        self.hist_button.setEnabled(has_numeric)
+        self.poly_button.setEnabled(has_numeric)
+        self.pie_button.setEnabled(has_categorical)
             
     def update_data_display(self):
         """Actualiza la tabla con los datos cargados"""

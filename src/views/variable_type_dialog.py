@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QComboBox, QTableWidget, QTableWidgetItem,
                              QHeaderView)
 from PyQt6.QtCore import Qt
-from utils.variable_detector import VariableType
+from src.utils.variable_detector import VariableType
 
 class VariableTypeDialog(QDialog):
     def __init__(self, variable_types: dict, parent=None):

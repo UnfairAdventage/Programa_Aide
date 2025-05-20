@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 from typing import Optional, Dict, Any, List
-from utils.variable_detector import VariableDetector, VariableType
-from utils.data_grouping import DataGrouping, ClassInterval
-from utils.frequency_distribution import FrequencyCalculator, FrequencyDistribution
+from src.utils.variable_detector import VariableDetector, VariableType
+from src.utils.data_grouping import DataGrouping, ClassInterval
+from src.utils.frequency_distribution import FrequencyCalculator, FrequencyDistribution
 
 class DataModel:
     def __init__(self):

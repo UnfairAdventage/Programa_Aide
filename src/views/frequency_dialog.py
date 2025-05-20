@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QGroupBox, QFormLayout)
 from PyQt6.QtCore import Qt
 import pandas as pd
-from utils.frequency_distribution import FrequencyDistribution
+from src.utils.frequency_distribution import FrequencyDistribution
 
 class FrequencyDialog(QDialog):
     def __init__(self, distribution: FrequencyDistribution, parent=None):
