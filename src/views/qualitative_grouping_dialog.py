@@ -3,6 +3,12 @@ from PyQt6.QtCore import Qt
 from src.utils.data_grouping import group_by_initial, group_by_frequency, group_by_similarity, get_grouping_recommendation
 import difflib
 from collections import Counter
+import socket
+from PyQt6.QtWidgets import QApplication
+import os
+import ast
+from dotenv import load_dotenv
+from google import genai
 
 class QualitativeGroupingDialog(QDialog):
     def __init__(self, series, column_name, recommendation=None, parent=None):
@@ -47,10 +53,11 @@ class QualitativeGroupingDialog(QDialog):
             "Por Geografía/Cultura/Política": "Agrupa por regiones, continentes, bloques económicos, etc. Ejemplo: País → América Latina, Europa Occidental...",
             "Por Binarización/Dicotomía": "Agrupa en dos grandes grupos (Sí/No, Alto/Bajo, Manual/No manual, etc.).",
             "Por Codificación Ordinal": "Asigna un orden lógico a las categorías (ej: Primaria < Secundaria < Universidad).",
-            "Por Clustering/Estadístico": "Agrupa automáticamente usando análisis estadístico (clustering, K-Means, etc.) si hay datos asociados."
+            "Por Clustering/Estadístico": "Agrupa automáticamente usando análisis estadístico (clustering, K-Means, etc.) si hay datos asociados.",
+            "Por IA (Gemini)": "Usa inteligencia artificial para sugerir la mejor agrupación semántica, jerárquica o conceptual posible."
         }
 
-        # Selector de método
+        # Selector de método y botón IA
         method_layout = QHBoxLayout()
         method_layout.addWidget(QLabel("Método de agrupación:"))
         self.method_combo = QComboBox()
@@ -59,6 +66,10 @@ class QualitativeGroupingDialog(QDialog):
         self.method_combo.currentTextChanged.connect(self.apply_method)
         self.method_combo.currentTextChanged.connect(self.update_method_explanation)
         method_layout.addWidget(self.method_combo)
+        # Botón IA
+        self.ia_button = QPushButton("Agrupar con IA (Gemini)")
+        self.ia_button.clicked.connect(self.group_with_gemini)
+        method_layout.addWidget(self.ia_button)
         layout.addLayout(method_layout)
 
         # Explicación dinámica del método
@@ -226,4 +237,71 @@ class QualitativeGroupingDialog(QDialog):
         for i, val in enumerate(self.unique_values):
             group = self.table.item(i, 1).text() if self.table.item(i, 1) else val
             mapping[val] = group
-        return mapping 
+        return mapping
+
+    def check_internet(self):
+        try:
+            # Intentar conectar a Google DNS
+            socket.create_connection(("8.8.8.8", 53), timeout=2)
+            return True
+        except OSError:
+            return False
+
+    def group_with_gemini(self):
+        if not self.check_internet():
+            QMessageBox.warning(self, "Sin conexión", "No se detectó conexión a internet. La agrupación inteligente requiere acceso a la nube.")
+            return
+        self.ia_button.setText("Cargando...")
+        QApplication.processEvents()
+        try:
+            mapping = self.call_gemini_api(self.unique_values)
+            if not isinstance(mapping, dict):
+                raise Exception("La IA no devolvió un diccionario válido.")
+            for i, val in enumerate(self.unique_values):
+                grupo = mapping.get(val, val)
+                self.table.setItem(i, 1, QTableWidgetItem(grupo))
+            QMessageBox.information(self, "Agrupación IA", "Agrupación sugerida por IA aplicada. Puedes editarla si lo deseas.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error IA", f"Ocurrió un error al usar Gemini: {e}")
+        self.ia_button.setText("Agrupar con IA (Gemini)")
+
+    def call_gemini_api(self, valores_unicos):
+        """
+        Llama a Gemini usando la API_KEY de un archivo .env y devuelve un mapeo valor_original: grupo.
+        Requiere: pip install google-generativeai python-dotenv
+        .env debe contener GEMINI_API_KEY=tu_clave
+        """
+        try:
+            load_dotenv()
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise Exception("No se encontró GEMINI_API_KEY en el .env")
+            client = genai.Client(api_key=api_key)
+            prompt = (
+                f"Columna (los datos pertenecen unicamente a esta columna y no más ejemplo columna nombres dato Alexander Martínez solamente se tomara como nombre): {self.column_name}\n"
+                f"Descripción: Agrupa los valores de la variable '{self.column_name}' en categorías útiles para análisis estadístico. "
+                "Solo devuelve un diccionario Python valor_original: grupo, no otro texto."
+                + "\n".join(self.method_explanations)
+                + "Agrupa los siguientes valores en categorías semánticas o jerárquicas, "
+                "Esta deberá servir para un análisis estadístico (Histograma, Polígono de frecuencia y Diagrama de pastel) con mínimo 6 grupos diferentes"
+                "devuelve un diccionario Python valor_original: grupo:\n"
+                + "\n".join(valores_unicos)
+            )
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            # Extraer el diccionario de la respuesta de Gemini
+            text = response.text
+            # Buscar el primer bloque de diccionario en la respuesta
+            start = text.find('{')
+            end = text.find('}', start)
+            if start == -1 or end == -1:
+                raise Exception("La IA no devolvió un diccionario reconocible.")
+            dict_str = text[start:end+1]
+            mapping = ast.literal_eval(dict_str)
+            if not isinstance(mapping, dict):
+                raise Exception("La IA no devolvió un diccionario válido.")
+            return mapping
+        except Exception as e:
+            raise Exception(f"Error al llamar a Gemini: {e}") 

@@ -10,3 +10,5 @@ Task_List.md
 *.pywz
 
 */__pycache__
+.env
+.gitignore
