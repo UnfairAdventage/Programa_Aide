@@ -13,7 +13,7 @@ class ClassInterval:
     class_mark: float
     
     def __str__(self) -> str:
-        return f"[{self.lower_nominal:.2f} - {self.upper_nominal:.2f})"
+        return f"[{self.lower_nominal} - {self.upper_nominal})"
 
 class DataGrouping:
     def __init__(self, measurement_unit: float = 1.0):
@@ -76,21 +76,22 @@ class DataGrouping:
         min_value = data.min()
         max_value = data.max() # Obtener el valor máximo real
         intervals = []
+        decimals = 3  # O el número de decimales que prefieras
         
         for i in range(num_classes):
-            lower_nominal = min_value + i * class_width
-            upper_nominal = lower_nominal + class_width
+            lower_nominal = round(min_value + i * class_width, decimals)
+            upper_nominal = round(lower_nominal + class_width, decimals)
             
             # Ajustar el último límite superior nominal para incluir el valor máximo
             if i == num_classes - 1:
-                upper_nominal = max(upper_nominal, max_value) # Asegurar que cubra el máximo
+                upper_nominal = round(max(upper_nominal, max_value), decimals) # Asegurar que cubra el máximo
 
             # Calcular límites reales
-            lower_real = lower_nominal - (self.measurement_unit / 2)
-            upper_real = upper_nominal + (self.measurement_unit / 2)
+            lower_real = round(lower_nominal - (self.measurement_unit / 2), decimals)
+            upper_real = round(upper_nominal + (self.measurement_unit / 2), decimals)
             
             # Calcular marca de clase
-            class_mark = (lower_real + upper_real) / 2
+            class_mark = round((lower_real + upper_real) / 2, decimals)
             
             intervals.append(ClassInterval(
                 lower_nominal=lower_nominal,

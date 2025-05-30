@@ -352,3 +352,10 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
 
 Este flujo asegura que cualquier usuario, incluso sin experiencia previa en estadística, pueda analizar y visualizar sus datos de manera intuitiva y didáctica, aprovechando todas las funcionalidades del programa.
 
+# Correcciones y mejoras
+
+1. Corrección de la Marca de Clase en la distribución de frecuencias.
+    - Este error se debe a que en **el programa solamente mostrábamos 2** decimales en lugar del número completo de decimales esto hacia que **la Clase no coincidiera con la Marca de clase** pero los limites reales si coincidían.
+    - Al corregir el error también debemos corregir la precision binaria de los números flotantes en el código.
+![Error de Marca de Clase](docs/error_marca_clase.png)
+![Solución de la marca de clase](docs/solucion_marca_clase.png)
