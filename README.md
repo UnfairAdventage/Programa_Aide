@@ -86,7 +86,7 @@ A continuación se muestran ejemplos de la interfaz y de los gráficos generados
 ![Diagrama de pastel](docs/ejemplo_pastel.png)
 
 ### Tabla de frecuencias
-![Tabla de frecuencias](docs/ejemplo_tabla_frecuencias.png)
+![Tabla de frecuencias](docs/ejemplo_medidas_cuantitativas.png)
 
 > **Nota:** Si no ves las imágenes, colócalas en la carpeta `docs/` con los nombres indicados o reemplaza por tus propios ejemplos.
 
@@ -211,14 +211,16 @@ Algoritmo AnalisisEstadistico
                 Calcular y mostrar:
                     - Tabla de frecuencias
                     - Medidas de tendencia y dispersión:
-                        * Media aritmética
-                        * Mediana
-                        * Moda
-                        * Rango
-                        * Varianza
-                        * Desviación estándar
-                        * Desviación media
-                        * Coeficiente de variación
+                        * Media aritmética (con sustitución)
+                        * Mediana (con sustitución)
+                        * Moda (con sustitución)
+                        * Rango (con sustitución)
+                        * Varianza (con sustitución, N y N-1 correctos)
+                        * Desviación estándar (con sustitución)
+                        * Desviación media (con sustitución)
+                        * Coeficiente de variación (con sustitución)
+                    - Mostrar columna de sustitución en la tabla
+                    - Permitir clic para ver todos los datos usados en la sustitución
                     - Histograma y polígono de frecuencia juntos
             Sino // es cualitativa
                 Si la cantidad de valores únicos > 15 entonces
@@ -231,15 +233,10 @@ Algoritmo AnalisisEstadistico
                     Mostrar tabla de frecuencias y diagrama de pastel
                 FinSi
                 Mostrar histograma y polígono de frecuencia juntos
-                Mostrar solo la moda como medida de tendencia
-                Mostrar mensaje "No se puede calcular" para:
-                    * Media aritmética
-                    * Mediana
-                    * Rango
-                    * Varianza
-                    * Desviación estándar
-                    * Desviación media
-                    * Coeficiente de variación
+                Calcular y mostrar solo la moda (con sustitución)
+                Mostrar mensaje "No se puede calcular para variables cualitativas" en el resto de medidas
+                Mostrar columna de sustitución (con valores de la variable)
+                Permitir clic para ver todos los datos usados en la sustitución de la moda
             FinSi
         FinSi
     FinMientras
@@ -247,6 +244,8 @@ FinAlgoritmo
 ```
 
 ## Diagrama de flujo (Mermaid)
+
+![Diagrama de flujo](docs/flujo.png)
 
 ```mermaid
 flowchart TD
@@ -261,17 +260,20 @@ flowchart TD
     G --> I[Calcular todas las medidas]
     I --> J[Mostrar tabla de frecuencias]
     J --> K[Mostrar medidas de tendencia y dispersión]
-    K --> L[Mostrar histograma y polígono juntos]
+    K --> K2[Mostrar columna de sustitución y botón para ver todos los datos]
+    K2 --> L[Mostrar histograma y polígono juntos]
     
     H -->|Sí| M[Agrupar por pares de iniciales]
     H -->|No| N[Frecuencias por valor]
     M --> O[Mostrar tabla y pastel agrupados]
     N --> P[Mostrar tabla y pastel normales]
-    O --> Q[Mostrar solo moda]
+    O --> Q[Mostrar solo moda y sustitución]
     P --> Q
+    Q --> Q2[Mostrar mensaje "No se puede calcular" en otras medidas]
+    Q2 --> Q3[Permitir ver todos los datos de la moda]
     
     L --> R{¿Otra columna?}
-    Q --> R
+    Q3 --> R
     R -->|Sí| F
     R -->|No| S[Fin]
 ```
@@ -286,4 +288,67 @@ flowchart TD
 
 - Al seleccionar cualquier variable (cuantitativa o cualitativa), el programa muestra el histograma y el polígono de frecuencia juntos en una sola ventana, uno encima del otro, usando colores diferenciados para facilitar la interpretación.
 - Para variables cualitativas con muchas categorías, la agrupación por iniciales también se refleja en ambos gráficos.
+
+## Ejecución paso a paso: ¿Cómo funciona el programa?
+
+A continuación te muestro cómo sería la experiencia de uso del programa, paso a paso, desde la perspectiva de un usuario:
+
+1. **Inicio del programa**
+   - Abro el programa y veo una ventana principal clara y moderna.
+   - Hay botones para cargar datos desde un archivo CSV, Excel o para ingresar datos manualmente.
+   - ![Ventana principal](docs/ejemplo_interfaz.png)
+
+2. **Carga de datos**
+   - Hago clic en "Cargar CSV" y selecciono mi archivo de datos.
+   - El programa carga los datos y los muestra en una tabla.
+   - ![Tabla de datos cargados](docs/ejemplo_tabla_frecuencias.png)
+   - Si hay algún error en el archivo, recibo un mensaje claro indicando el problema.
+
+3. **Detección y revisión de tipos de variables**
+   - El programa detecta automáticamente si cada columna es cuantitativa (números) o cualitativa (categorías).
+   - Puedo revisar y corregir los tipos de variable con un botón dedicado.
+   - ![Revisión de tipos de variable](docs/ejemplo_tipos.png)
+
+4. **Selección de columna para análisis**
+   - Selecciono la columna que quiero analizar desde un menú desplegable.
+   - El programa habilita automáticamente las opciones de análisis según el tipo de variable.
+
+5. **Análisis de variables cuantitativas**
+   - Si selecciono una variable cuantitativa:
+     - Puedo agrupar los datos en intervalos (por ejemplo, usando la regla de Sturges).
+     - ![Tabla de frecuencias](docs/ejemplo_frecuencias.png)
+     - Veo la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
+     - Se muestran todas las medidas de tendencia central y dispersión: media, mediana, moda, rango, varianza, desviación estándar, desviación media y coeficiente de variación.
+     - Cada medida incluye una columna de "sustitución" que muestra cómo se sustituyen los datos en la fórmula. Si hay muchos datos, puedo hacer clic para verlos todos.
+     - ![Tabla de medidas cuantitativas](docs/ejemplo_medidas_cuantitativas.png)
+     - Puedo visualizar el histograma y el polígono de frecuencia juntos.
+     - ![Histograma](docs/ejemplo_histograma.png)
+     - ![Polígono de frecuencia](docs/ejemplo_poli.png)
+
+6. **Análisis de variables cualitativas**
+   - Si selecciono una variable cualitativa:
+     - El programa calcula y muestra solo la moda (valor más frecuente) en la tabla de medidas, con su sustitución.
+     - El resto de medidas muestran el mensaje "No se puede calcular para variables cualitativas".
+     - Veo la tabla de frecuencias por categoría o agrupadas por iniciales si hay muchas categorías.
+     - ![Tabla de frecuencias cualitativas](docs/ejemplo_tabla_frecuencias_cualitativas.png)
+     - Puedo visualizar el diagrama de pastel, el histograma y el polígono de frecuencia para las categorías.
+     - ![Diagrama de pastel](docs/ejemplo_pastel.png)
+     - También puedo hacer clic en la sustitución de la moda para ver todos los valores.
+
+7. **Interacción y visualización**
+   - Todas las tablas y gráficos se muestran de forma clara y ordenada.
+   - Los gráficos se abren en ventanas emergentes y son fáciles de interpretar.
+   - Si cambio de columna, el análisis se actualiza automáticamente.
+
+8. **Mensajes y validaciones**
+   - Si intento realizar una operación no válida (por ejemplo, agrupar una variable cualitativa), el programa me muestra un mensaje de advertencia y no se bloquea.
+   - Si hay errores en los datos, siempre recibo mensajes claros y útiles.
+
+9. **Cierre y nuevo análisis**
+   - Puedo cargar nuevos datos o cambiar los tipos de variable en cualquier momento.
+   - El programa está listo para repetir el análisis con cualquier columna o conjunto de datos.
+
+---
+
+Este flujo asegura que cualquier usuario, incluso sin experiencia previa en estadística, pueda analizar y visualizar sus datos de manera intuitiva y didáctica, aprovechando todas las funcionalidades del programa.
 

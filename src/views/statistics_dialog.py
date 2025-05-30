@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
-                             QGroupBox, QFormLayout, QTextEdit)
+                             QGroupBox, QFormLayout, QTextEdit, QMessageBox)
 from PyQt6.QtCore import Qt
-from src.utils.statistics_utils import all_stats
+from src.utils.statistics_utils import all_stats, format_substitution
 from src.utils.variable_detector import VariableType
 import pandas as pd
 
@@ -10,7 +10,9 @@ class StatisticsDialog(QDialog):
     def __init__(self, data: pd.Series, var_type=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Medidas de Tendencia Central y Dispersión")
-        self.setMinimumSize(700, 500)
+        self.setMinimumSize(900, 600)
+        
+        self.data = data  # Guardar los datos para poder mostrarlos completos
         
         # Detectar tipo si no se pasa
         if var_type is None and hasattr(data, 'name') and hasattr(parent, 'data_model'):
@@ -23,7 +25,7 @@ class StatisticsDialog(QDialog):
         if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
             # Solo mostrar la moda como medida de tendencia central
             moda = {k: v for k, v in stats.items() if k.lower().startswith('moda')}
-            vacio = ("No se puede calcular para variables cualitativas", "", "")
+            vacio = ("No se puede calcular para variables cualitativas", "", "", "")
             stats = {
                 'Moda': list(moda.values())[0] if moda else vacio,
                 'Media aritmética': vacio,
@@ -33,27 +35,45 @@ class StatisticsDialog(QDialog):
                 'Desviación estándar': vacio,
                 'Coeficiente de variación (%)': vacio
             }
-        else:
-            # Tabla de medidas
-            self.table = QTableWidget()
-            self.table.setRowCount(len(stats))
-            self.table.setColumnCount(4)
-            self.table.setHorizontalHeaderLabels([
-                "Medida", "Valor", "Fórmula", "Referencia"
-            ])
-            for i, (key, (value, formula, ref)) in enumerate(stats.items()):
-                self.table.setItem(i, 0, QTableWidgetItem(key))
-                if isinstance(value, float):
-                    self.table.setItem(i, 1, QTableWidgetItem(f"{value:.4f}"))
-                elif isinstance(value, list):
-                    self.table.setItem(i, 1, QTableWidgetItem(", ".join(str(v) for v in value)))
-                else:
-                    self.table.setItem(i, 1, QTableWidgetItem(str(value)))
-                self.table.setItem(i, 2, QTableWidgetItem(formula))
-                self.table.setItem(i, 3, QTableWidgetItem(ref))
-            self.table.resizeColumnsToContents()
-            self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-            layout.addWidget(self.table)
+        
+        # Tabla de medidas
+        self.table = QTableWidget()
+        self.table.setRowCount(len(stats))
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels([
+            "Medida", "Valor", "Sustitución", "Fórmula", "Referencia"
+        ])
+        
+        for i, (key, (value, substitution, formula, ref)) in enumerate(stats.items()):
+            # Medida
+            self.table.setItem(i, 0, QTableWidgetItem(key))
+            
+            # Valor
+            if isinstance(value, float):
+                self.table.setItem(i, 1, QTableWidgetItem(f"{value:.4f}"))
+            elif isinstance(value, list):
+                self.table.setItem(i, 1, QTableWidgetItem(", ".join(str(v) for v in value)))
+            else:
+                self.table.setItem(i, 1, QTableWidgetItem(str(value)))
+            
+            # Sustitución
+            substitution_item = QTableWidgetItem(substitution)
+            substitution_item.setToolTip("Haz clic para ver todos los datos")
+            self.table.setItem(i, 2, substitution_item)
+            
+            # Fórmula
+            self.table.setItem(i, 3, QTableWidgetItem(formula))
+            
+            # Referencia
+            self.table.setItem(i, 4, QTableWidgetItem(ref))
+        
+        # Conectar el evento de clic en la celda
+        self.table.cellClicked.connect(self.show_full_substitution)
+        
+        # Ajustar columnas
+        self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        layout.addWidget(self.table)
         
         # Explicación
         explanation = QTextEdit()
@@ -83,4 +103,14 @@ class StatisticsDialog(QDialog):
         close_button = QPushButton("Cerrar")
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)
-        layout.addLayout(button_layout) 
+        layout.addLayout(button_layout)
+        
+    def show_full_substitution(self, row: int, column: int):
+        """Muestra la sustitución completa cuando se hace clic en la celda"""
+        if column == 2:  # Columna de sustitución
+            measure = self.table.item(row, 0).text()
+            if measure != "Moda" or pd.api.types.is_numeric_dtype(self.data):
+                # Mostrar todos los datos
+                full_data = format_substitution(self.data, max_values=len(self.data))
+                QMessageBox.information(self, f"Datos completos - {measure}", 
+                                      f"Todos los datos utilizados:\n{full_data}")
