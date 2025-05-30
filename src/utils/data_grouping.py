@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+import string
+from collections import defaultdict
 
 @dataclass
 class ClassInterval:
@@ -184,3 +186,78 @@ class DataGrouping:
             return False
             
         return True 
+
+# Agrupación por inicial o pares de iniciales
+def group_by_initial(series):
+    # Por defecto: pares de iniciales
+    pairs = [(a, b) for a, b in zip(string.ascii_uppercase[::2], string.ascii_uppercase[1::2])]
+    if len(string.ascii_uppercase) % 2 != 0:
+        pairs.append((string.ascii_uppercase[-1], ''))
+    bins = []
+    labels = []
+    for a, b in pairs:
+        if b:
+            bins.append((a, b))
+            labels.append(f"{a}-{b}")
+        else:
+            bins.append((a,))
+            labels.append(f"{a}")
+    def assign_group(val):
+        if not val:
+            return ''
+        initial = val[0].upper()
+        for (a, *b), label in zip(bins, labels):
+            if initial == a or (b and initial == b[0]):
+                return label
+        return 'Otros'
+    return series.apply(assign_group)
+
+# Agrupación por frecuencia (alta, media, baja)
+def group_by_frequency(series, n_groups=3):
+    value_counts = series.value_counts()
+    total = value_counts.sum()
+    thresholds = [0.7, 0.3]  # Por defecto: top 70% alta, siguiente 30% media, resto baja
+    freq_map = {}
+    cum_sum = 0
+    sorted_vals = value_counts.index.tolist()
+    for val in sorted_vals:
+        freq = value_counts[val]
+        cum_sum += freq
+        ratio = cum_sum / total
+        if ratio <= thresholds[0]:
+            freq_map[val] = 'Alta frecuencia'
+        elif ratio <= sum(thresholds):
+            freq_map[val] = 'Media frecuencia'
+        else:
+            freq_map[val] = 'Baja frecuencia'
+    return series.map(freq_map).fillna('Baja frecuencia')
+
+# Agrupación por similitud fonética/lexical (requiere diccionario de sinónimos)
+def group_by_similarity(series, synonyms_dict=None):
+    if synonyms_dict is None:
+        # Por defecto, no agrupa nada
+        return series
+    reverse_map = {}
+    for group, values in synonyms_dict.items():
+        for v in values:
+            reverse_map[v.lower()] = group
+    return series.apply(lambda x: reverse_map.get(x.lower(), x))
+
+# Agrupación por mapeo personalizado
+def group_by_custom_mapping(series, mapping):
+    return series.map(mapping).fillna(series)
+
+# Recomendación de agrupación
+def get_grouping_recommendation(series):
+    n_unique = series.nunique(dropna=True)
+    value_counts = series.value_counts()
+    if n_unique > 30:
+        return "inicial"
+    if value_counts.iloc[0] / value_counts.sum() > 0.5:
+        return "frecuencia"
+    if n_unique < 6:
+        return "manual"
+    rare = (value_counts < max(2, 0.05 * len(series))).sum()
+    if rare > n_unique * 0.5:
+        return "frecuencia"
+    return "manual" 

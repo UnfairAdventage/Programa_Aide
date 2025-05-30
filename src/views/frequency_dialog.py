@@ -72,20 +72,37 @@ class FrequencyDialog(QDialog):
         
     def update_table(self):
         """Actualiza la tabla con la distribución de frecuencias"""
-        df = self.distribution.to_dataframe()
-        # Si la variable es cualitativa y hay más de 15 valores únicos, agrupar por pares de iniciales
+        # Obtener el nombre de la columna y el modelo de datos si existen
+        column = None
+        data_model = None
         if hasattr(self.parent(), 'data_model') and hasattr(self.parent(), 'column_combo'):
             column = self.parent().column_combo.currentText()
-            var_type = self.parent().data_model.variable_types.get(column)
+            data_model = self.parent().data_model
+        # Si es cualitativa, aplicar agrupación personalizada si existe
+        if column and data_model:
+            var_type = data_model.variable_types.get(column)
             if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
-                original_series = self.parent().data_model.data[column].astype(str)
-                if original_series.nunique(dropna=True) > 15:
-                    grouped = group_by_initial_pairs(original_series)
+                series = data_model.data[column].astype(str)
+                mapping = data_model.get_qualitative_grouping(column)
+                if mapping:
+                    grouped = series.map(mapping).fillna(series)
                     freq_abs = grouped.value_counts().sort_index()
                     freq_rel = freq_abs / freq_abs.sum()
                     freq_acum = freq_abs.cumsum()
                     freq_rel_acum = freq_rel.cumsum()
-                    # Construir DataFrame
+                    df = pd.DataFrame({
+                        'Grupo': freq_abs.index,
+                        'Frecuencia Absoluta': freq_abs.values,
+                        'Frecuencia Relativa': freq_rel.values,
+                        'Frecuencia Acumulada': freq_acum.values,
+                        'Frecuencia Relativa Acumulada': freq_rel_acum.values
+                    })
+                elif series.nunique(dropna=True) > 15:
+                    grouped = group_by_initial_pairs(series)
+                    freq_abs = grouped.value_counts().sort_index()
+                    freq_rel = freq_abs / freq_abs.sum()
+                    freq_acum = freq_abs.cumsum()
+                    freq_rel_acum = freq_rel.cumsum()
                     df = pd.DataFrame({
                         'Inicial(es)': freq_abs.index,
                         'Frecuencia Absoluta': freq_abs.values,
@@ -93,6 +110,8 @@ class FrequencyDialog(QDialog):
                         'Frecuencia Acumulada': freq_acum.values,
                         'Frecuencia Relativa Acumulada': freq_rel_acum.values
                     })
+        else:
+            df = self.distribution.to_dataframe()
         self.table.setRowCount(len(df))
         self.table.setColumnCount(len(df.columns))
         self.table.setHorizontalHeaderLabels(df.columns)

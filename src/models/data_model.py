@@ -14,6 +14,8 @@ class DataModel:
         self.grouped_data: Dict[str, Dict] = {}  # Almacena datos agrupados por columna
         self.frequency_calculator = FrequencyCalculator()
         self.frequency_distributions: Dict[str, FrequencyDistribution] = {}
+        # NUEVO: agrupaciones cualitativas personalizadas
+        self.qualitative_groupings: Dict[str, Dict[str, str]] = {}
         
     def load_data(self, file_path: str) -> bool:
         """
@@ -139,15 +141,46 @@ class DataModel:
         """
         self.grouped_data[column] = grouping_info 
         
+    def set_qualitative_grouping(self, column: str, mapping: Dict[str, str]):
+        """
+        Guarda el mapeo de agrupación cualitativa para una columna
+        """
+        self.qualitative_groupings[column] = mapping
+        # Forzar recálculo de la distribución de frecuencias
+        if column in self.frequency_distributions:
+            del self.frequency_distributions[column]
+
+    def get_qualitative_grouping(self, column: str) -> Optional[Dict[str, str]]:
+        """
+        Obtiene el mapeo de agrupación cualitativa para una columna
+        """
+        return self.qualitative_groupings.get(column)
+
+    def recommend_qualitative_grouping_method(self, column: str) -> str:
+        """
+        Recomienda el mejor método de agrupación para una variable cualitativa
+        """
+        if self.data is None or column not in self.data.columns:
+            return "manual"
+        series = self.data[column].astype(str)
+        n_unique = series.nunique(dropna=True)
+        value_counts = series.value_counts()
+        # Reglas simples de recomendación
+        if n_unique > 30:
+            return "inicial"  # Demasiadas categorías, mejor agrupar por inicial
+        if value_counts.iloc[0] / value_counts.sum() > 0.5:
+            return "frecuencia"  # Hay una categoría dominante
+        if n_unique < 6:
+            return "manual"  # Pocas categorías, mejor manual
+        # Si hay muchas categorías poco frecuentes
+        rare = (value_counts < max(2, 0.05 * len(series))).sum()
+        if rare > n_unique * 0.5:
+            return "frecuencia"
+        return "manual"
+
     def get_frequency_distribution(self, column: str) -> Optional[FrequencyDistribution]:
         """
         Obtiene la distribución de frecuencias para una columna
-        
-        Args:
-            column: Nombre de la columna
-            
-        Returns:
-            Distribución de frecuencias o None si no hay datos
         """
         if column in self.frequency_distributions:
             return self.frequency_distributions[column]
@@ -155,14 +188,20 @@ class DataModel:
             return None
         var_type = self.variable_types.get(column)
         if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
-            # Si hay más de 15 categorías, agrupar por pares de iniciales
             series = self.data[column].astype(str)
-            if series.nunique(dropna=True) > 15:
-                from src.views.frequency_dialog import group_by_initial_pairs
-                grouped = group_by_initial_pairs(series)
+            # APLICAR AGRUPACIÓN CUALITATIVA SI EXISTE
+            mapping = self.get_qualitative_grouping(column)
+            if mapping:
+                grouped = series.map(mapping).fillna(series)
                 freq_abs = grouped.value_counts().sort_index()
             else:
-                freq_abs = series.value_counts().sort_index()
+                # Si hay más de 15 categorías, agrupar por pares de iniciales
+                if series.nunique(dropna=True) > 15:
+                    from src.views.frequency_dialog import group_by_initial_pairs
+                    grouped = group_by_initial_pairs(series)
+                    freq_abs = grouped.value_counts().sort_index()
+                else:
+                    freq_abs = series.value_counts().sort_index()
             total = freq_abs.sum()
             freq_rel = freq_abs / total
             freq_acum = freq_abs.cumsum()

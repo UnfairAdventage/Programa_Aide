@@ -53,7 +53,7 @@ Ejecuta el comando anterior y se abrirá la ventana principal del programa.
 - Usa el menú desplegable "Columna" para elegir la variable que deseas analizar.
 
 ### 5. Análisis y visualización
-- **Agrupar Datos:** Si la variable es cuantitativa, puedes agrupar en intervalos usando la regla de Sturges o configurando manualmente.
+- ** Datos:** Si la variable es cuantitativa, puedes  en intervalos usando la regla de Sturges o configurando manualmente.
 - **Ver Distribución de Frecuencias:** Muestra la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
 - **Medidas de Tendencia y Dispersión:**
   - Si la variable es cuantitativa, verás media, mediana, moda, rango, varianza, desviación estándar y coeficiente de variación.
@@ -135,7 +135,7 @@ A continuación se detallan las fórmulas y métodos utilizados para cada estad�
 - **Intervalos de clase:** Calculados usando la regla de Sturges: $k = 1 + 3.322 \log_{10}(N)$
 - **Límites reales:** Se ajustan sumando/restando la mitad de la unidad de medida.
 - **Marca de clase:** Punto medio de cada intervalo.
-- **Método:** Se usa `pd.cut` y `value_counts` para agrupar y contar.
+- **Método:** Se usa `pd.cut` y `value_counts` para  y contar.
 
 ### Gráficos
 - **Histograma:**
@@ -224,7 +224,7 @@ Algoritmo AnalisisEstadistico
                     - Histograma y polígono de frecuencia juntos
             Sino // es cualitativa
                 Si la cantidad de valores únicos > 15 entonces
-                    Agrupar por pares de iniciales (A-B, C-D, ...)
+                     por pares de iniciales (A-B, C-D, ...)
                     Calcular frecuencias por grupo
                     Mostrar tabla de frecuencias agrupada
                     Mostrar diagrama de pastel agrupado
@@ -263,7 +263,7 @@ flowchart TD
     K --> K2[Mostrar columna de sustitución y botón para ver todos los datos]
     K2 --> L[Mostrar histograma y polígono juntos]
     
-    H -->|Sí| M[Agrupar por pares de iniciales]
+    H -->|Sí| M[ por pares de iniciales]
     H -->|No| N[Frecuencias por valor]
     M --> O[Mostrar tabla y pastel agrupados]
     N --> P[Mostrar tabla y pastel normales]
@@ -315,7 +315,7 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
 
 5. **Análisis de variables cuantitativas**
    - Si selecciono una variable cuantitativa:
-     - Puedo agrupar los datos en intervalos (por ejemplo, usando la regla de Sturges).
+     - Puedo  los datos en intervalos (por ejemplo, usando la regla de Sturges).
      - ![Tabla de frecuencias](docs/ejemplo_frecuencias.png)
      - Veo la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
      - Se muestran todas las medidas de tendencia central y dispersión: media, mediana, moda, rango, varianza, desviación estándar, desviación media y coeficiente de variación.
@@ -341,7 +341,7 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
    - Si cambio de columna, el análisis se actualiza automáticamente.
 
 8. **Mensajes y validaciones**
-   - Si intento realizar una operación no válida (por ejemplo, agrupar una variable cualitativa), el programa me muestra un mensaje de advertencia y no se bloquea.
+   - Si intento realizar una operación no válida (por ejemplo,  una variable cualitativa), el programa me muestra un mensaje de advertencia y no se bloquea.
    - Si hay errores en los datos, siempre recibo mensajes claros y útiles.
 
 9. **Cierre y nuevo análisis**

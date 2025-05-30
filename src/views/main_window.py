@@ -11,6 +11,7 @@ from src.models.data_model import DataModel
 from src.utils.variable_detector import VariableType
 from src.utils.plot_utils import plot_histogram, plot_frequency_polygon, plot_pie
 import matplotlib.pyplot as plt
+from src.views.qualitative_grouping_dialog import QualitativeGroupingDialog
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -71,6 +72,12 @@ class MainWindow(QMainWindow):
         self.group_button.clicked.connect(self.show_grouping)
         self.group_button.setEnabled(False)
         analysis_layout.addWidget(self.group_button)
+        
+        # NUEVO: Botón para agrupar cualitativa
+        self.qual_group_button = QPushButton("Agrupar Cualitativa")
+        self.qual_group_button.clicked.connect(self.show_qualitative_grouping)
+        self.qual_group_button.setEnabled(False)
+        analysis_layout.addWidget(self.qual_group_button)
         
         # Botón para ver frecuencias
         self.frequency_button = QPushButton("Ver Distribución de Frecuencias")
@@ -240,7 +247,13 @@ class MainWindow(QMainWindow):
             plt.show()
         else:
             series_str = series.astype(str)
-            if series_str.nunique(dropna=True) > 15:
+            mapping = self.data_model.get_qualitative_grouping(column)
+            if mapping:
+                grouped = series_str.map(mapping).fillna(series_str)
+                freq = grouped.value_counts().sort_index()
+                x = freq.index
+                y = freq.values
+            elif series_str.nunique(dropna=True) > 15:
                 grouped = group_by_initial_pairs(series_str)
                 freq = grouped.value_counts().sort_index()
                 x = freq.index
@@ -281,7 +294,14 @@ class MainWindow(QMainWindow):
             plt.show()
         else:
             series_str = series.astype(str)
-            if series_str.nunique(dropna=True) > 15:
+            mapping = self.data_model.get_qualitative_grouping(column)
+            if mapping:
+                grouped = series_str.map(mapping).fillna(series_str)
+                freq = grouped.value_counts().sort_index()
+                x = range(len(freq.index))
+                y = freq.values
+                labels = freq.index
+            elif series_str.nunique(dropna=True) > 15:
                 grouped = group_by_initial_pairs(series_str)
                 freq = grouped.value_counts().sort_index()
                 x = range(len(freq.index))
@@ -315,12 +335,21 @@ class MainWindow(QMainWindow):
         if var_type in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
             # Para variables categóricas
             series_str = series.astype(str)
-            if series_str.nunique(dropna=True) > 15:
+            mapping = self.data_model.get_qualitative_grouping(column)
+            if mapping:
+                grouped = series_str.map(mapping).fillna(series_str)
+                counts = grouped.value_counts().sort_index()
+                from src.utils.plot_utils import plot_pie
+                plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column} (agrupado)")
+            elif series_str.nunique(dropna=True) > 15:
+                from src.views.frequency_dialog import group_by_initial_pairs
                 grouped = group_by_initial_pairs(series_str)
                 counts = grouped.value_counts().sort_index()
+                from src.utils.plot_utils import plot_pie
                 plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column} (agrupado por iniciales)")
             else:
                 counts = series_str.value_counts()
+                from src.utils.plot_utils import plot_pie
                 plot_pie(counts.values, counts.index, title=f"Diagrama de pastel: {column}")
         elif var_type in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
             # Para variables cuantitativas
@@ -328,6 +357,7 @@ class MainWindow(QMainWindow):
             if distribution:
                 frequencies = [distribution.absolute_freq[str(interval)] for interval in distribution.intervals]
                 labels = [f"{interval.lower_nominal:.2f} - {interval.upper_nominal:.2f}" for interval in distribution.intervals]
+                from src.utils.plot_utils import plot_pie
                 plot_pie(frequencies, labels, title=f"Diagrama de pastel: {column} (Frecuencias por intervalo)")
             else:
                 QMessageBox.warning(self, "Error", "No se pudo calcular la distribución de frecuencias")
@@ -338,6 +368,29 @@ class MainWindow(QMainWindow):
 
         self.status_label.setText(f"Diagrama de pastel mostrado para {column}")
             
+    def show_qualitative_grouping(self):
+        """Muestra el diálogo de agrupación cualitativa"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        var_type = self.data_model.variable_types.get(column)
+        if var_type not in [VariableType.CATEGORICAL_NOMINAL, VariableType.CATEGORICAL_ORDINAL]:
+            QMessageBox.warning(self, "Error", 
+                                "La agrupación cualitativa solo está disponible para variables cualitativas.")
+            return
+        series = self.data_model.data[column].astype(str)
+        recommendation = self.data_model.recommend_qualitative_grouping_method(column)
+        dialog = QualitativeGroupingDialog(series, column, recommendation, self)
+        if dialog.exec():
+            mapping = dialog.get_mapping()
+            self.data_model.set_qualitative_grouping(column, mapping)
+            # Forzar recálculo de la distribución de frecuencias
+            if column in self.data_model.frequency_distributions:
+                del self.data_model.frequency_distributions[column]
+            self.status_label.setText(f"Agrupación cualitativa aplicada para {column}")
+            
     def update_column_selector(self):
         """Actualiza el selector de columnas"""
         self.column_combo.clear()
@@ -345,6 +398,7 @@ class MainWindow(QMainWindow):
         if self.data_model.data is None:
             self.column_combo.setEnabled(False)
             self.group_button.setEnabled(False)
+            self.qual_group_button.setEnabled(False)
             self.frequency_button.setEnabled(False)
             self.stats_button.setEnabled(False)
             self.hist_button.setEnabled(False)
@@ -364,7 +418,8 @@ class MainWindow(QMainWindow):
                 has_categorical = True
         self.column_combo.setEnabled(True)
         self.group_button.setEnabled(has_numeric)
-        self.frequency_button.setEnabled(has_numeric)
+        self.qual_group_button.setEnabled(has_categorical)
+        self.frequency_button.setEnabled(has_numeric or has_categorical)
         self.stats_button.setEnabled(has_numeric)
         self.hist_button.setEnabled(has_numeric)
         self.poly_button.setEnabled(has_numeric)
