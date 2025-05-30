@@ -22,31 +22,53 @@ class FrequencyDistribution:
         Returns:
             DataFrame con la distribución de frecuencias
         """
+        def format_decimal(value):
+            return f"{value:.4f}"
+        def format_fraction(abs_value, total):
+            return f"{abs_value}/{total}"
+        def format_percent(value):
+            return f"{value*100:.2f}%"
         data = []
         # Detectar si es cualitativa (DummyInterval)
         if not hasattr(self.intervals[0], 'lower_real'):
             for interval in self.intervals:
                 interval_str = str(interval)
+                abs_f = self.absolute_freq[interval_str]
+                rel_f = self.relative_freq[interval_str]
+                cum_f = self.cumulative_freq[interval_str]
+                cum_rel_f = self.cumulative_relative_freq[interval_str]
                 data.append({
                     'Grupo/Categoría': interval_str,
-                    'Frecuencia Absoluta (fᵢ)': self.absolute_freq[interval_str],
-                    'Frecuencia Relativa (hᵢ)': self.relative_freq[interval_str],
-                    'Frecuencia Acumulada (Fᵢ)': self.cumulative_freq[interval_str],
-                    'Frecuencia Relativa Acumulada (Hᵢ)': self.cumulative_relative_freq[interval_str]
+                    'Frecuencia Absoluta (fᵢ)': abs_f,
+                    'Frecuencia Relativa (hᵢ)': format_decimal(rel_f),
+                    'hᵢ(/)': format_fraction(abs_f, self.total_observations),
+                    'hᵢ(%)': format_percent(rel_f),
+                    'Frecuencia Acumulada (Fᵢ)': cum_f,
+                    'Frecuencia Relativa Acumulada (Hᵢ)': format_decimal(cum_rel_f),
+                    'Hᵢ(/)': format_fraction(cum_f, self.total_observations),
+                    'Hᵢ(%)': format_percent(cum_rel_f)
                 })
             return pd.DataFrame(data)
         # Si es cuantitativa, flujo normal
         for interval in self.intervals:
             interval_str = str(interval)
+            abs_f = self.absolute_freq[interval_str]
+            rel_f = self.relative_freq[interval_str]
+            cum_f = self.cumulative_freq[interval_str]
+            cum_rel_f = self.cumulative_relative_freq[interval_str]
             data.append({
                 'Clase': interval_str,
                 'Límite Inferior Real': interval.lower_real,
                 'Límite Superior Real': interval.upper_real,
                 'Marca de Clase': interval.class_mark,
-                'Frecuencia Absoluta (fᵢ)': self.absolute_freq[interval_str],
-                'Frecuencia Relativa (hᵢ)': self.relative_freq[interval_str],
-                'Frecuencia Acumulada (Fᵢ)': self.cumulative_freq[interval_str],
-                'Frecuencia Relativa Acumulada (Hᵢ)': self.cumulative_relative_freq[interval_str]
+                'Frecuencia Absoluta (fᵢ)': abs_f,
+                'Frecuencia Relativa (hᵢ)': format_decimal(rel_f),
+                'hᵢ(/)': format_fraction(abs_f, self.total_observations),
+                'hᵢ(%)': format_percent(rel_f),
+                'Frecuencia Acumulada (Fᵢ)': cum_f,
+                'Frecuencia Relativa Acumulada (Hᵢ)': format_decimal(cum_rel_f),
+                'Hᵢ(/)': format_fraction(cum_f, self.total_observations),
+                'Hᵢ(%)': format_percent(cum_rel_f)
             })
         return pd.DataFrame(data)
         
