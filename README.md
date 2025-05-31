@@ -9,11 +9,15 @@ Este es un programa de análisis estadístico con interfaz gráfica desarrollado
 - Cálculo de estadísticas descriptivas
 - Generación de gráficos estadísticos
 - Interfaz gráfica intuitiva
+- Agrupación inteligente de variables cualitativas usando IA (Gemini)
+- Formateo mejorado de frecuencias y resultados estadísticos
 
 ## Requisitos
 
 - Python 3.8 o superior
 - Dependencias listadas en `requirements.txt`
+- Conexión a internet para usar la funcionalidad de agrupación con IA
+- Archivo `.env` con la clave API de Gemini (GEMINI_API_KEY)
 
 ## Instalación
 
@@ -26,6 +30,10 @@ Este es un programa de análisis estadístico con interfaz gráfica desarrollado
 3. Instalar dependencias:
    ```bash
    pip install -r requirements.txt
+   ```
+4. Crear archivo `.env` en la raíz del proyecto con tu clave API de Gemini:
+   ```
+   GEMINI_API_KEY=tu_clave_api_aqui
    ```
 
 ## Uso
@@ -51,10 +59,16 @@ Ejecuta el comando anterior y se abrirá la ventana principal del programa.
 
 ### 4. Seleccionar columna para análisis
 - Usa el menú desplegable "Columna" para elegir la variable que deseas analizar.
+- Para variables cualitativas, puedes usar diferentes métodos de agrupación:
+  - Por iniciales (A-B, C-D, etc.)
+  - Por frecuencia (valores más comunes)
+  - Por similitud (valores similares)
+  - Por IA (Gemini) - Requiere conexión a internet
+  - Personalizado (agrupación manual)
 
 ### 5. Análisis y visualización
-- ** Datos:** Si la variable es cuantitativa, puedes  en intervalos usando la regla de Sturges o configurando manualmente.
-- **Ver Distribución de Frecuencias:** Muestra la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
+- **Datos:** Si la variable es cuantitativa, puedes agrupar en intervalos usando la regla de Sturges o configurando manualmente.
+- **Ver Distribución de Frecuencias:** Muestra la tabla de frecuencias con formato mejorado (absoluta, relativa, acumulada, etc.).
 - **Medidas de Tendencia y Dispersión:**
   - Si la variable es cuantitativa, verás media, mediana, moda, rango, varianza, desviación estándar y coeficiente de variación.
   - Si es cualitativa, solo se muestra la moda (valor más frecuente).
@@ -159,7 +173,8 @@ A continuación se detallan las fórmulas y métodos utilizados para cada estad�
 │   └── utils/       # Utilidades
 ├── requirements.txt
 ├── README.md
-└── docs/            # Imágenes de ejemplo
+├── .env            # Archivo de configuración para API keys
+└── docs/           # Imágenes de ejemplo
 ```
 
 ## Licencia
@@ -209,28 +224,50 @@ Algoritmo AnalisisEstadistico
             Si la columna es cuantitativa entonces
                 Permitir agrupación, frecuencias, todas las medidas, histogramas, polígonos
                 Calcular y mostrar:
-                    - Tabla de frecuencias
+                    - Tabla de frecuencias con formato mejorado:
+                        * Frecuencia absoluta (fᵢ)
+                        * Frecuencia relativa (hᵢ) con formato decimal y porcentaje
+                        * Frecuencia acumulada (Fᵢ)
+                        * Frecuencia relativa acumulada (Hᵢ) con formato decimal y porcentaje
                     - Medidas de tendencia y dispersión:
-                        * Media aritmética (con sustitución)
-                        * Mediana (con sustitución)
+                        * Media aritmética (con sustitución y formato decimal)
+                        * Mediana (con sustitución y formato decimal)
                         * Moda (con sustitución)
-                        * Rango (con sustitución)
-                        * Varianza (con sustitución, N y N-1 correctos)
-                        * Desviación estándar (con sustitución)
-                        * Desviación media (con sustitución)
-                        * Coeficiente de variación (con sustitución)
+                        * Rango (con sustitución y formato decimal)
+                        * Varianza (con sustitución, N y N-1 correctos, formato decimal)
+                        * Desviación estándar (con sustitución y formato decimal)
+                        * Desviación media (con sustitución y formato decimal)
+                        * Coeficiente de variación (con sustitución y formato porcentual)
                     - Mostrar columna de sustitución en la tabla
                     - Permitir clic para ver todos los datos usados en la sustitución
                     - Histograma y polígono de frecuencia juntos
             Sino // es cualitativa
                 Si la cantidad de valores únicos > 15 entonces
-                     por pares de iniciales (A-B, C-D, ...)
-                    Calcular frecuencias por grupo
-                    Mostrar tabla de frecuencias agrupada
+                    Mostrar diálogo de agrupación con opciones:
+                        - Por iniciales (A-B, C-D, etc.)
+                        - Por frecuencia (valores más comunes)
+                        - Por similitud (valores similares)
+                        - Por IA (Gemini):
+                            * Verificar conexión a internet
+                            * Si hay conexión:
+                                - Cargar API key desde .env
+                                - Llamar a Gemini API
+                                - Procesar respuesta y crear mapeo
+                                - Aplicar agrupación sugerida
+                            * Si no hay conexión:
+                                - Mostrar mensaje de error
+                        - Personalizado (agrupación manual)
+                    Calcular frecuencias por grupo seleccionado
+                    Mostrar tabla de frecuencias agrupada con formato mejorado:
+                        * Frecuencia absoluta (fᵢ)
+                        * Frecuencia relativa (hᵢ) con formato decimal y porcentaje
+                        * Frecuencia acumulada (Fᵢ)
+                        * Frecuencia relativa acumulada (Hᵢ) con formato decimal y porcentaje
                     Mostrar diagrama de pastel agrupado
                 Sino
                     Calcular frecuencias por valor
-                    Mostrar tabla de frecuencias y diagrama de pastel
+                    Mostrar tabla de frecuencias con formato mejorado
+                    Mostrar diagrama de pastel
                 FinSi
                 Mostrar histograma y polígono de frecuencia juntos
                 Calcular y mostrar solo la moda (con sustitución)
@@ -245,8 +282,6 @@ FinAlgoritmo
 
 ## Diagrama de flujo (Mermaid)
 
-![Diagrama de flujo](docs/flujo.png)
-
 ```mermaid
 flowchart TD
     A[Inicio] --> B{Cargar datos}
@@ -258,15 +293,30 @@ flowchart TD
     F -->|Cualitativa| H{¿Más de 15 valores únicos?}
     
     G --> I[Calcular todas las medidas]
-    I --> J[Mostrar tabla de frecuencias]
+    I --> J[Mostrar tabla de frecuencias con formato mejorado]
     J --> K[Mostrar medidas de tendencia y dispersión]
     K --> K2[Mostrar columna de sustitución y botón para ver todos los datos]
     K2 --> L[Mostrar histograma y polígono juntos]
     
-    H -->|Sí| M[ por pares de iniciales]
+    H -->|Sí| M[Seleccionar método de agrupación]
     H -->|No| N[Frecuencias por valor]
-    M --> O[Mostrar tabla y pastel agrupados]
-    N --> P[Mostrar tabla y pastel normales]
+    
+    M --> M1[Por iniciales]
+    M --> M2[Por frecuencia]
+    M --> M3[Por similitud]
+    M --> M4[Por IA (Gemini)]
+    M --> M5[Personalizado]
+    
+    M4 --> M4A{¿Hay conexión a internet?}
+    M4A -->|Sí| M4B[Cargar API key]
+    M4A -->|No| M4C[Mostrar error]
+    M4B --> M4D[Llamar a Gemini API]
+    M4D --> M4E[Procesar respuesta]
+    M4E --> M4F[Aplicar agrupación sugerida]
+    
+    M1 & M2 & M3 & M4F & M5 --> O[Mostrar tabla de frecuencias agrupada con formato mejorado]
+    N --> P[Mostrar tabla de frecuencias con formato mejorado]
+    
     O --> Q[Mostrar solo moda y sustitución]
     P --> Q
     Q --> Q2[Mostrar mensaje "No se puede calcular" en otras medidas]
@@ -315,7 +365,7 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
 
 5. **Análisis de variables cuantitativas**
    - Si selecciono una variable cuantitativa:
-     - Puedo  los datos en intervalos (por ejemplo, usando la regla de Sturges).
+     - Puedo agrupar los datos en intervalos (por ejemplo, usando la regla de Sturges).
      - ![Tabla de frecuencias](docs/ejemplo_frecuencias.png)
      - Veo la tabla de frecuencias (absoluta, relativa, acumulada, etc.).
      - Se muestran todas las medidas de tendencia central y dispersión: media, mediana, moda, rango, varianza, desviación estándar, desviación media y coeficiente de variación.
@@ -341,7 +391,7 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
    - Si cambio de columna, el análisis se actualiza automáticamente.
 
 8. **Mensajes y validaciones**
-   - Si intento realizar una operación no válida (por ejemplo,  una variable cualitativa), el programa me muestra un mensaje de advertencia y no se bloquea.
+   - Si intento realizar una operación no válida (por ejemplo, una variable cualitativa), el programa me muestra un mensaje de advertencia y no se bloquea.
    - Si hay errores en los datos, siempre recibo mensajes claros y útiles.
 
 9. **Cierre y nuevo análisis**

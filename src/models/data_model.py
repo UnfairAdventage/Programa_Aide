@@ -242,4 +242,95 @@ class DataModel:
                 self.grouping.measurement_unit
             )
         self.frequency_distributions[column] = distribution
-        return distribution 
+        return distribution
+
+    def analyze_polynomial_function(self, coefficients: List[float], intercept: float) -> Dict[str, Any]:
+        """
+        Analiza una función polinómica y retorna sus características principales
+        
+        Args:
+            coefficients: Lista de coeficientes del polinomio
+            intercept: Término independiente
+            
+        Returns:
+            Dict con el análisis de la función
+        """
+        from scipy import optimize
+        
+        # Crear función polinómica
+        def f(x):
+            return sum(c * x**i for i, c in enumerate(coefficients)) + intercept
+            
+        # Dominio
+        domain = "ℝ (todos los números reales)"
+        
+        # Rango
+        # Para polinomios de grado par, el rango depende del coeficiente principal
+        degree = len(coefficients)
+        if degree % 2 == 0:
+            if coefficients[-1] > 0:
+                range_min = optimize.minimize(f, 0).fun
+                range = f"[{range_min:.4f}, ∞)"
+            else:
+                range_max = optimize.maximize(f, 0).fun
+                range = f"(-∞, {range_max:.4f}]"
+        else:
+            range = "ℝ (todos los números reales)"
+            
+        # Puntos críticos
+        if degree > 1:
+            # Derivada
+            def f_prime(x):
+                return sum((i+1) * c * x**i for i, c in enumerate(coefficients[:-1]))
+            
+            # Encontrar raíces de la derivada
+            critical_points = []
+            try:
+                roots = optimize.root(f_prime, 0).x
+                for x in roots:
+                    y = f(x)
+                    critical_points.append((x, y))
+            except:
+                pass
+        else:
+            critical_points = []
+            
+        # Ordenada al origen
+        y_intercept = f(0)
+        
+        # Análisis de comportamiento
+        behavior = []
+        
+        # Analizar término principal
+        if degree > 0:
+            lead_coef = coefficients[-1]
+            if degree % 2 == 0:  # Grado par
+                if lead_coef > 0:
+                    behavior.append("La función es una parábola que abre hacia arriba")
+                else:
+                    behavior.append("La función es una parábola que abre hacia abajo")
+            else:  # Grado impar
+                if lead_coef > 0:
+                    behavior.append("La función crece sin límite cuando x → ∞ y decrece sin límite cuando x → -∞")
+                else:
+                    behavior.append("La función decrece sin límite cuando x → ∞ y crece sin límite cuando x → -∞")
+                    
+        # Analizar pendiente si es lineal
+        if degree == 1:
+            slope = coefficients[0]
+            if slope > 0:
+                behavior.append(f"La pendiente es {slope:.4f} y es positiva")
+            else:
+                behavior.append(f"La pendiente es {slope:.4f} y es negativa")
+                
+        # Analizar término independiente
+        if intercept != 0:
+            behavior.append(f"La función se desplaza {abs(intercept):.4f} unidades {'hacia arriba' if intercept > 0 else 'hacia abajo'}")
+            
+        return {
+            "Dominio": domain,
+            "Rango": range,
+            "Puntos Críticos": critical_points,
+            "Ordenada al Origen": y_intercept,
+            "Comportamiento": behavior
+        } 

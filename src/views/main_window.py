@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QFileDialog, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QComboBox)
+                             QTableWidget, QTableWidgetItem, QComboBox, QInputDialog, QDialog)
 from PyQt6.QtCore import Qt
 from src.views.manual_input_dialog import ManualInputDialog
 from src.views.variable_type_dialog import VariableTypeDialog
@@ -12,6 +12,15 @@ from src.utils.variable_detector import VariableType
 from src.utils.plot_utils import plot_histogram, plot_frequency_polygon, plot_pie
 import matplotlib.pyplot as plt
 from src.views.qualitative_grouping_dialog import QualitativeGroupingDialog
+import numpy as np
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+import socket
+import os
+import re
+from dotenv import load_dotenv
+from google import genai
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -106,6 +115,12 @@ class MainWindow(QMainWindow):
         self.pie_button.clicked.connect(self.show_pie_chart)
         self.pie_button.setEnabled(False)
         analysis_layout.addWidget(self.pie_button)
+        
+        # NUEVO: Botón para ajustar función y graficar
+        self.fit_button = QPushButton("Ajustar Función y Graficar")
+        self.fit_button.clicked.connect(self.fit_and_plot)
+        self.fit_button.setEnabled(False)
+        analysis_layout.addWidget(self.fit_button)
         
         layout.addLayout(analysis_layout)
         
@@ -238,13 +253,8 @@ class MainWindow(QMainWindow):
             else:
                 intervals = self.data_model.grouping.create_class_intervals(series)
                 bins = [interval.lower_nominal for interval in intervals] + [intervals[-1].upper_nominal]
-            plt.figure(figsize=(8, 4))
-            plt.hist(series, bins=bins, edgecolor='black', alpha=0.7, color='tab:blue')
-            plt.xlabel(column)
-            plt.ylabel('Frecuencia')
-            plt.title('Histograma')
-            plt.tight_layout()
-            plt.show()
+            class_marks = [interval.class_mark for interval in intervals]
+            plot_histogram(series, bins, class_marks=class_marks, xlabel=column, ylabel='Frecuencia', title='Histograma')
         else:
             series_str = series.astype(str)
             mapping = self.data_model.get_qualitative_grouping(column)
@@ -404,6 +414,7 @@ class MainWindow(QMainWindow):
             self.hist_button.setEnabled(False)
             self.poly_button.setEnabled(False)
             self.pie_button.setEnabled(False)
+            self.fit_button.setEnabled(False)
             return
         # Agregar columnas numéricas y categóricas
         has_numeric = False
@@ -424,6 +435,7 @@ class MainWindow(QMainWindow):
         self.hist_button.setEnabled(has_numeric)
         self.poly_button.setEnabled(has_numeric)
         self.pie_button.setEnabled(has_numeric or has_categorical)
+        self.fit_button.setEnabled(has_numeric)
             
     def update_data_display(self):
         """Actualiza la tabla con los datos cargados"""
@@ -452,4 +464,243 @@ class MainWindow(QMainWindow):
                 self.data_table.setItem(i, j, QTableWidgetItem(value))
                 
         # Ajustar tamaño de columnas
-        self.data_table.resizeColumnsToContents() 
+        self.data_table.resizeColumnsToContents()
+        
+    def fit_and_plot(self):
+        """Ajusta una función polinómica a los datos y muestra la gráfica"""
+        if self.data_model.data is None:
+            return
+        column = self.column_combo.currentText()
+        if not column:
+            return
+        var_type = self.data_model.variable_types.get(column)
+        if var_type not in [VariableType.NUMERICAL_CONTINUOUS, VariableType.NUMERICAL_DISCRETE]:
+            QMessageBox.warning(self, "Error", 
+                              "El ajuste de función solo está disponible para variables numéricas.")
+            return
+            
+        distribution = self.data_model.get_frequency_distribution(column)
+        if not distribution:
+            QMessageBox.warning(self, "Error", 
+                              "No se pudo calcular la distribución de frecuencias")
+            return
+            
+        # Obtener datos X, Y
+        df = distribution.to_dataframe()
+        if 'Marca de Clase' in df.columns:
+            x = df['Marca de Clase'].values
+        else:
+            x = np.arange(len(df))
+        y = df['Frecuencia Absoluta (fᵢ)'].values
+        
+        # Ajustar polinomios de grado 1 a 5
+        results = []
+        for deg in range(1, 6):
+            poly = PolynomialFeatures(degree=deg, include_bias=False)
+            X_poly = poly.fit_transform(x.reshape(-1, 1))
+            model = LinearRegression().fit(X_poly, y)
+            y_pred = model.predict(X_poly)
+            r2 = r2_score(y, y_pred)
+            results.append({
+                "Grado": deg,
+                "R²": round(r2, 4),
+                "Coeficientes": model.coef_.tolist(),
+                "Intercepto": round(model.intercept_, 4),
+                "y_pred": y_pred
+            })
+            
+        # Seleccionar el mejor modelo (mayor R²)
+        best = max(results, key=lambda r: r["R²"])
+        coef = best["Coeficientes"]
+        intercept = best["Intercepto"]
+        deg = best["Grado"]
+        
+        # Construir fórmula
+        terms = [f"{coef[i]:+.4f}x^{i+1}" for i in range(len(coef)-1, -1, -1)]
+        formula = "f(x) = " + " ".join(terms) + f" {intercept:+.4f}"
+        
+        # Guardar datos para la explicación IA (asegúrate de que siempre se asignen antes del diálogo)
+        self.last_formula = formula
+        self.last_x = x
+        self.last_y = y
+        self.last_best = best
+        self.last_analysis = self.data_model.analyze_polynomial_function(coef, intercept)
+        
+        # Obtener análisis matemático
+        analysis = self.data_model.analyze_polynomial_function(coef, intercept)
+        
+        # Crear contenido del archivo markdown
+        markdown_content = f"""# Análisis de la Función Ajustada
+
+## Fórmula
+{formula}
+
+## Análisis Matemático
+- **Dominio**: {analysis['Dominio']}
+- **Rango**: {analysis['Rango']}
+- **Ordenada al Origen**: {analysis['Ordenada al Origen']:.4f}
+- **Puntos Críticos**: {', '.join(f"({x:.4f}, {y:.4f})" for x, y in analysis['Puntos Críticos']) if analysis['Puntos Críticos'] else 'No hay puntos críticos'}
+
+### Comportamiento
+{chr(10).join('- ' + behavior for behavior in analysis['Comportamiento'])}
+
+## Datos Originales
+- **Datos X**: {x.tolist()}
+- **Datos Y**: {y.tolist()}
+- **R²**: {best['R²']}
+"""
+        
+        # Guardar el análisis en un archivo
+        def safe_filename(s):
+            return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
+        filename = f"Analisis_Funcion_para_{safe_filename(column)}.md"
+        
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+            
+        # Crear diálogo personalizado para mostrar la fórmula y el análisis
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Análisis de la Función Ajustada")
+        layout = QVBoxLayout(dialog)
+        
+        # Mostrar fórmula
+        formula_label = QLabel(formula)
+        formula_label.setWordWrap(True)
+        layout.addWidget(formula_label)
+        
+        # Tabla de análisis
+        analysis_table = QTableWidget()
+        analysis_table.setRowCount(len(analysis))
+        analysis_table.setColumnCount(2)
+        analysis_table.setHorizontalHeaderLabels(["Característica", "Valor"])
+        
+        row = 0
+        for key, value in analysis.items():
+            analysis_table.setItem(row, 0, QTableWidgetItem(key))
+            if isinstance(value, list):
+                if key == "Puntos Críticos":
+                    text = "\n".join(f"({x:.4f}, {y:.4f})" for x, y in value) if value else "No hay puntos críticos"
+                else:
+                    text = "\n".join(value)
+            else:
+                text = str(value)
+            analysis_table.setItem(row, 1, QTableWidgetItem(text))
+            row += 1
+            
+        analysis_table.resizeColumnsToContents()
+        analysis_table.resizeRowsToContents()
+        layout.addWidget(analysis_table)
+        
+        # Botones
+        button_layout = QHBoxLayout()
+        
+        # Botón de explicación IA
+        explain_button = QPushButton("Explicación IA")
+        explain_button.clicked.connect(lambda: self.explain_with_gemini(dialog, analysis, markdown_content, x, y, best, formula))
+        button_layout.addWidget(explain_button)
+        
+        # Botón de cerrar
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(dialog.accept)
+        button_layout.addWidget(close_button)
+        
+        layout.addLayout(button_layout)
+        dialog.exec()
+        
+        # Graficar
+        fig = plt.figure(figsize=(8, 4))
+        plt.scatter(x, y, color='blue', label='Frecuencia Absoluta (datos)')
+        x_plot = np.linspace(min(x), max(x), 200)
+        poly = PolynomialFeatures(degree=deg, include_bias=False)
+        X_plot_poly = poly.fit_transform(x_plot.reshape(-1, 1))
+        model = LinearRegression().fit(poly.fit_transform(x.reshape(-1, 1)), y)
+        y_plot = model.predict(X_plot_poly)
+        plt.plot(x_plot, y_plot, color='red', label='Función ajustada')
+        plt.xlabel('Marca de Clase' if 'Marca de Clase' in df.columns else 'Índice de Grupo')
+        plt.ylabel('Frecuencia Absoluta')
+        plt.title('Ajuste polinómico a la frecuencia absoluta')
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+        
+        # Traer la ventana de la gráfica al frente
+        try:
+            fig.canvas.manager.window.raise_()
+            fig.canvas.manager.window.activateWindow()
+        except Exception:
+            pass
+            
+        self.status_label.setText(f"Función ajustada y graficada para {column}")
+        
+    def explain_with_gemini(self, parent_dialog=None, analysis=None, markdown_content=None, x=None, y=None, best=None, formula=None):
+        """Genera una explicación de la fórmula ajustada usando IA"""
+        # Verificar conexión
+        try:
+            socket.create_connection(("8.8.8.8", 53), timeout=2)
+        except OSError:
+            QMessageBox.warning(self, "Sin conexión", "No se detectó conexión a internet. La explicación IA requiere acceso a la nube.")
+            return
+        # Usar datos locales si los atributos de instancia no existen
+        if formula is None:
+            formula = getattr(self, 'last_formula', None)
+        if x is None:
+            x = getattr(self, 'last_x', None)
+        if y is None:
+            y = getattr(self, 'last_y', None)
+        if best is None:
+            best = getattr(self, 'last_best', None)
+        if analysis is None:
+            analysis = getattr(self, 'last_analysis', None)
+        # Si aún falta alguno, mostrar error
+        if formula is None or x is None or y is None or best is None or analysis is None:
+            QMessageBox.warning(self, "Error", "No se encontraron los datos necesarios para la explicación IA. Por favor, ajusta una función primero.")
+            return
+            
+        # Cargar API key
+        load_dotenv()
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            QMessageBox.critical(self, "Error IA", "No se encontró GEMINI_API_KEY en el .env")
+            return
+            
+        # Generar explicación
+        client = genai.Client(api_key=api_key)
+        column = self.column_combo.currentText()
+        
+        # Generar explicación con IA
+        prompt = (
+            f"Análisis anterior: {analysis}\n"
+            f"Explica por qué la siguiente fórmula polinómica es la mejor para ajustar la frecuencia absoluta de estos datos. "
+            f"Incluye el razonamiento estadístico y matemático, y menciona el valor de R².\n"
+            f"Fórmula: {formula}\n"
+            f"Datos X: {x.tolist()}\n"
+            f"Datos Y: {y.tolist()}\n"
+            f"R²: {best['R²']}\n"
+        )
+        
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            text = response.text
+            
+            # Agregar explicación IA al contenido markdown
+            markdown_content += "\n## Explicación IA\n" + text
+            
+            # Guardar la explicación en un archivo
+            def safe_filename(s):
+                return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
+            filename = f"Analisis_Funcion_para_{safe_filename(column)}.md"
+            
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+                
+            QMessageBox.information(self, "Análisis Completado", f"El análisis completo se ha guardado en el archivo: {filename}")
+            
+            # Si hay un diálogo padre, cerrarlo
+            if parent_dialog:
+                parent_dialog.accept()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error IA", f"Error al generar la explicación: {str(e)}") 

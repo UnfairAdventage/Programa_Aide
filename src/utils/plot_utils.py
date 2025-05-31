@@ -1,12 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_histogram(data, bins, xlabel='Valor', ylabel='Frecuencia', title='Histograma de frecuencias'):
+def plot_histogram(data, bins, class_marks=None, xlabel='Valor', ylabel='Frecuencia', title='Histograma de frecuencias'):
     plt.figure(figsize=(7,5))
     plt.hist(data, bins=bins, edgecolor='black', alpha=0.7)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
+    # Si se pasan marcas de clase, dibujar líneas y puntos rojizos
+    if class_marks is not None:
+        for mc in class_marks:
+            plt.axvline(mc, color='crimson', linestyle='--', linewidth=2, alpha=0.7, label='Marca de clase' if mc == class_marks[0] else None)
+            plt.plot(mc, 0, 'o', color='crimson')
+        # Solo una vez en la leyenda
+        handles, labels = plt.gca().get_legend_handles_labels()
+        if 'Marca de clase' in labels:
+            plt.legend()
     plt.tight_layout()
     plt.show()
 
