@@ -65,7 +65,7 @@ def variance(series: pd.Series) -> Tuple[float, str]:
     """
     mean_val = series.mean()
     variance_val = series.var(ddof=1)
-    substitution = f"(1/{len(series)-1}) * Σ(xᵢ - {mean_val:.4f})²"
+    substitution = f"(1/{len(series)-1}) * Σ(xᵢ - x̄)²"
     return variance_val, substitution
 
 def std_dev(series: pd.Series) -> Tuple[float, str]:
@@ -87,8 +87,11 @@ def coef_variation(series: pd.Series) -> Tuple[float, str]:
     """
     mean_val = mean(series)[0]
     std_val = std_dev(series)[0]
-    cv_val = (std_val / abs(mean_val)) * 100 if mean_val != 0 else float('nan')
-    substitution = f"({std_val:.4f} / |{mean_val:.4f}|) * 100%"
+    # Redondear a 4 decimales para el cálculo y la sustitución
+    mean_val_r = round(mean_val, 4)
+    std_val_r = round(std_val, 4)
+    cv_val = (std_val_r / abs(mean_val_r)) * 100 if mean_val_r != 0 else float('nan')
+    substitution = f"({std_val_r:.4f} / |{mean_val_r:.4f}|) * 100%"
     return cv_val, substitution
 
 def mean_deviation(series: pd.Series) -> Tuple[float, str]:
@@ -99,7 +102,7 @@ def mean_deviation(series: pd.Series) -> Tuple[float, str]:
     """
     mean_val = mean(series)[0]
     md_val = np.mean(np.abs(series - mean_val))
-    substitution = f"(1/{len(series)}) * Σ|xᵢ - {mean_val:.4f}|"
+    substitution = f"(1/{len(series)}) * Σ|xᵢ - x̄|"
     return md_val, substitution
 
 def all_stats(series: pd.Series) -> Dict[str, Tuple[Any, str, str, str]]:

@@ -3,6 +3,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from .data_grouping import ClassInterval
+from math import gcd
 
 @dataclass
 class FrequencyDistribution:
@@ -25,7 +26,11 @@ class FrequencyDistribution:
         def format_decimal(value):
             return f"{value:.4f}"
         def format_fraction(abs_value, total):
-            return f"{abs_value}/{total}"
+            # Simplificar la fracción usando el máximo común divisor
+            divisor = gcd(int(abs_value), total)
+            numerador = int(abs_value) // divisor
+            denominador = total // divisor
+            return f"{numerador}/{denominador}"
         def format_percent(value):
             return f"{value*100:.2f}%"
         data = []
