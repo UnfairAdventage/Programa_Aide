@@ -9,6 +9,11 @@ import os
 import ast
 from dotenv import load_dotenv
 from google import genai
+from pydantic import BaseModel
+
+class Grouping(BaseModel):
+    value: str
+    group: str
 
 class QualitativeGroupingDialog(QDialog):
     def __init__(self, series, column_name, recommendation=None, parent=None):
@@ -280,28 +285,23 @@ class QualitativeGroupingDialog(QDialog):
             prompt = (
                 f"Columna (los datos pertenecen unicamente a esta columna y no más ejemplo columna nombres dato Alexander Martínez solamente se tomara como nombre): {self.column_name}\n"
                 f"Descripción: Agrupa los valores de la variable '{self.column_name}' en categorías útiles para análisis estadístico. "
-                "Solo devuelve un diccionario Python valor_original: grupo, no otro texto."
                 + "\n".join(self.method_explanations)
                 + "Agrupa los siguientes valores en categorías semánticas o jerárquicas, "
                 "Esta deberá servir para un análisis estadístico (Histograma, Polígono de frecuencia y Diagrama de pastel) con mínimo 6 grupos diferentes"
                 "devuelve un diccionario Python valor_original: grupo:\n"
+                "Valores únicos:\n"
                 + "\n".join(valores_unicos)
             )
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": list[Grouping],
+                },
             )
-            # Extraer el diccionario de la respuesta de Gemini
-            text = response.text
-            # Buscar el primer bloque de diccionario en la respuesta
-            start = text.find('{')
-            end = text.find('}', start)
-            if start == -1 or end == -1:
-                raise Exception("La IA no devolvió un diccionario reconocible.")
-            dict_str = text[start:end+1]
-            mapping = ast.literal_eval(dict_str)
-            if not isinstance(mapping, dict):
-                raise Exception("La IA no devolvió un diccionario válido.")
+            groupings: list[Grouping] = response.parsed
+            mapping = {g.value: g.group for g in groupings}
             return mapping
         except Exception as e:
             raise Exception(f"Error al llamar a Gemini: {e}") 

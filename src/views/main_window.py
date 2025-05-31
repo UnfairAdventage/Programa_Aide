@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QFileDialog, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QComboBox, QInputDialog, QDialog)
+                             QTableWidget, QTableWidgetItem, QComboBox, QInputDialog, QDialog, QLineEdit)
 from PyQt6.QtCore import Qt
 from src.views.manual_input_dialog import ManualInputDialog
 from src.views.variable_type_dialog import VariableTypeDialog
@@ -21,6 +21,8 @@ import os
 import re
 from dotenv import load_dotenv
 from google import genai
+from .function_between_columns_dialog import FunctionBetweenColumnsDialog
+from pydantic import BaseModel
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -121,6 +123,12 @@ class MainWindow(QMainWindow):
         self.fit_button.clicked.connect(self.fit_and_plot)
         self.fit_button.setEnabled(False)
         analysis_layout.addWidget(self.fit_button)
+        
+        # Botón para crear función entre columnas
+        self.function_between_columns_button = QPushButton("Crear función entre columnas")
+        self.function_between_columns_button.clicked.connect(self.show_function_between_columns_dialog)
+        self.function_between_columns_button.setEnabled(False)
+        layout.addWidget(self.function_between_columns_button)
         
         layout.addLayout(analysis_layout)
         
@@ -415,6 +423,7 @@ class MainWindow(QMainWindow):
             self.poly_button.setEnabled(False)
             self.pie_button.setEnabled(False)
             self.fit_button.setEnabled(False)
+            self.function_between_columns_button.setEnabled(False)
             return
         # Agregar columnas numéricas y categóricas
         has_numeric = False
@@ -436,6 +445,7 @@ class MainWindow(QMainWindow):
         self.poly_button.setEnabled(has_numeric)
         self.pie_button.setEnabled(has_numeric or has_categorical)
         self.fit_button.setEnabled(has_numeric)
+        self.function_between_columns_button.setEnabled(True)
             
     def update_data_display(self):
         """Actualiza la tabla con los datos cargados"""
@@ -554,7 +564,9 @@ class MainWindow(QMainWindow):
         def safe_filename(s):
             return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
         filename = f"Analisis_Funcion_para_{safe_filename(column)}.md"
-        
+        # Si hay sugerencia de IA, añádela al markdown
+        if hasattr(self, 'ia_suggestion_markdown') and self.ia_suggestion_markdown:
+            markdown_content += f"\n{self.ia_suggestion_markdown}\n"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(markdown_content)
             
@@ -567,9 +579,15 @@ class MainWindow(QMainWindow):
         formula_label = QLabel(formula)
         formula_label.setWordWrap(True)
         layout.addWidget(formula_label)
+        # Campo editable para la función
+        formula_edit = QLineEdit()
+        formula_edit.setText(formula)
+        formula_edit.setPlaceholderText("Edita la función aquí en notación LaTeX, por ejemplo: f(x) = 0.9x - 60")
+        layout.addWidget(formula_edit)
         
         # Tabla de análisis
         analysis_table = QTableWidget()
+        analysis_table.setObjectName("analysis_table")
         analysis_table.setRowCount(len(analysis))
         analysis_table.setColumnCount(2)
         analysis_table.setHorizontalHeaderLabels(["Característica", "Valor"])
@@ -596,9 +614,12 @@ class MainWindow(QMainWindow):
         
         # Botón de explicación IA
         explain_button = QPushButton("Explicación IA")
-        explain_button.clicked.connect(lambda: self.explain_with_gemini(dialog, analysis, markdown_content, x, y, best, formula))
+        explain_button.clicked.connect(lambda: self.explain_with_gemini(dialog, analysis, markdown_content, x, y, best, formula_edit.text()))
         button_layout.addWidget(explain_button)
-        
+        # Botón de recomendar función con IA
+        recommend_button = QPushButton("Recomendar función con IA")
+        recommend_button.clicked.connect(lambda: self.recommend_function_with_ia(formula_label, formula_edit, x, y, column))
+        button_layout.addWidget(recommend_button)
         # Botón de cerrar
         close_button = QPushButton("Cerrar")
         close_button.clicked.connect(dialog.accept)
@@ -704,3 +725,104 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             QMessageBox.critical(self, "Error IA", f"Error al generar la explicación: {str(e)}") 
+
+    def recommend_function_with_ia(self, formula_label, formula_edit, x, y, column):
+        """Usa Gemini para recomendar una nueva función y reemplaza la mostrada y editable si el usuario acepta. También actualiza la tabla de análisis y muestra la explicación."""
+        load_dotenv()
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            QMessageBox.critical(self, "Error IA", "No se encontró GEMINI_API_KEY en el .env")
+            return
+        class ModelAnalysis(BaseModel):
+            formula: str
+            model_type: str
+            dominio: str
+            rango: str
+            puntos_criticos: list[str]
+            ordenada_origen: str
+            comportamiento: list[str]
+            explicacion: str
+        prompt = (
+            "Para expresar algebraicamente la relación entre la temperatura y el consumo eléctrico de una ciudad, utilizamos una función donde el consumo depende de la temperatura. En este contexto:\n"
+            "* Variable independiente: Temperatura ($x$)\n"
+            "* Variable dependiente: Consumo eléctrico ($f(x)$)\n"
+            "### 📘 Representación algebraica\n"
+            "Una forma común de modelar esta relación es mediante una función cuadrática:\n"
+            "$$f(x) = a \cdot x^2 + b \cdot x + c$$\n"
+            "Donde:\n"
+            "* $f(x)$: Consumo eléctrico en kilovatios-hora\n"
+            "* $x$: Temperatura en grados Celsius\n"
+            "* $a$, $b$, $c$: Coeficientes que ajustan la función al contexto específico\n"
+            "Por ejemplo, si se determina que el consumo mínimo ocurre a 20°C y aumenta tanto para temperaturas más bajas como más altas, la función podría ser:\n"
+            "$$f(x) = 2(x-20)^2 + 1000$$\n"
+            "### 📊 Tabla de valores de ejemplo\n"
+            "| Temperatura (°C) | Consumo estimado (kWh) |\n|------------------|------------------------|\n| 10               | 1200                   |\n| 15               | 1050                   |\n| 20               | 1000                   |\n| 25               | 1050                   |\n| 30               | 1200                   |\n"
+            "Esta tabla muestra cómo el consumo estimado varía en función de la temperatura, según el modelo cuadrático propuesto.\n"
+            "### 📌 Consideraciones adicionales\n"
+            "Es importante destacar que la relación entre temperatura y consumo eléctrico puede no ser perfectamente cuadrática en la realidad. Factores como el uso de aire acondicionado, calefacción y hábitos de consumo pueden influir. Por ello, en algunos casos, se utilizan modelos más complejos para representar esta relación de manera más precisa.\n"
+            "\nAhora, dada la siguiente relación entre dos variables, sugiere el mejor tipo de modelo matemático (lineal, polinómico [cuadrático, cúbico, etc.], exponencial, logarítmico, etc.), la fórmula ajustada en notación LaTeX y una breve explicación.\n"
+            "formula (en LaTeX), model_type, dominio, rango, puntos_criticos (lista), ordenada_origen, comportamiento (lista), explicacion. "
+            "Siempre responde en español. "
+            f"Variable independiente: {column}\n"
+            f"Variable dependiente: Frecuencia absoluta\n"
+            f"X: {x.tolist()}\n"
+            f"Y: {y.tolist()}\n"
+        )
+        client = genai.Client(api_key=api_key)
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": ModelAnalysis,
+                },
+            )
+            analysis = response.parsed
+            # Preguntar al usuario si quiere reemplazar
+            msg = QMessageBox()
+            msg.setWindowTitle("Sugerencia de función IA")
+            msg.setText(f"La IA sugiere la siguiente función:\n\n$$ {analysis.formula} $$\n\n¿Deseas reemplazar la función actual y el análisis por esta sugerencia?\n\nExplicación: {analysis.explicacion}")
+            msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            ret = msg.exec()
+            if ret == QMessageBox.StandardButton.Yes:
+                # Actualizar función
+                formula_label.setText(f"<b>Función sugerida por IA:</b> <br><pre>$$\displaystyle {analysis.formula}$$</pre>")
+                formula_edit.setText(analysis.formula)
+                # Actualizar solo la tabla de análisis (NO los datos originales del usuario)
+                parent_dialog = formula_label.parentWidget().parentWidget() if hasattr(formula_label, 'parentWidget') else None
+                if parent_dialog:
+                    table = parent_dialog.findChild(QTableWidget, "analysis_table")
+                    if table:
+                        table.setRowCount(6)
+                        table.setItem(0, 0, QTableWidgetItem("Dominio"))
+                        table.setItem(0, 1, QTableWidgetItem(analysis.dominio))
+                        table.setItem(1, 0, QTableWidgetItem("Rango"))
+                        table.setItem(1, 1, QTableWidgetItem(analysis.rango))
+                        table.setItem(2, 0, QTableWidgetItem("Puntos Críticos"))
+                        table.setItem(2, 1, QTableWidgetItem(", ".join(analysis.puntos_criticos) if analysis.puntos_criticos else "No hay"))
+                        table.setItem(3, 0, QTableWidgetItem("Ordenada al Origen"))
+                        table.setItem(3, 1, QTableWidgetItem(analysis.ordenada_origen))
+                        table.setItem(4, 0, QTableWidgetItem("Comportamiento"))
+                        table.setItem(4, 1, QTableWidgetItem("; ".join(analysis.comportamiento)))
+                        table.setItem(5, 0, QTableWidgetItem("Explicación"))
+                        table.setItem(5, 1, QTableWidgetItem(analysis.explicacion))
+                # Guardar explicación para el markdown si se guarda
+                self.ia_suggestion_markdown = (
+                    f"## Sugerencia de modelo por IA\n"
+                    f"- **Tipo de modelo:** {analysis.model_type}\n"
+                    f"- **Fórmula sugerida:** $${analysis.formula}$$\n"
+                    f"- **Dominio:** {analysis.dominio}\n"
+                    f"- **Rango:** {analysis.rango}\n"
+                    f"- **Puntos críticos:** {', '.join(analysis.puntos_criticos) if analysis.puntos_criticos else 'No hay'}\n"
+                    f"- **Ordenada al origen:** {analysis.ordenada_origen}\n"
+                    f"- **Comportamiento:** {'; '.join(analysis.comportamiento)}\n"
+                    f"- **Explicación:** {analysis.explicacion}\n"
+                )
+        except Exception as e:
+            QMessageBox.critical(self, "Error IA", f"Error al obtener sugerencia de IA: {str(e)}")
+
+    def show_function_between_columns_dialog(self):
+        """Muestra el diálogo para crear función entre columnas"""
+        dialog = FunctionBetweenColumnsDialog(self.data_model, self)
+        dialog.exec() 
