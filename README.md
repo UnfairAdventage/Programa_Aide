@@ -11,6 +11,10 @@ Este es un programa de análisis estadístico con interfaz gráfica desarrollado
 - Interfaz gráfica intuitiva
 - Agrupación inteligente de variables cualitativas usando IA (Gemini)
 - Formateo mejorado de frecuencias y resultados estadísticos
+- Ajuste automático y manual de funciones polinómicas entre dos columnas numéricas
+- Recomendación de modelo/fórmula matemática usando IA (Gemini) para relaciones entre columnas
+- Análisis algebraico automático de la función ajustada (dominio, rango, puntos críticos, etc.)
+- Exportación de análisis y sugerencias de IA a archivos Markdown
 
 ## Requisitos
 
@@ -82,6 +86,15 @@ Ejecuta el comando anterior y se abrirá la ventana principal del programa.
 
 ### 7. Corrección y nuevo análisis
 - Puedes volver a cargar datos, cambiar tipos de variables o seleccionar otra columna para repetir el análisis.
+
+### 8. Crear función entre columnas
+- Haz clic en **Crear función entre columnas**.
+- Selecciona dos columnas numéricas (X e Y).
+- Elige ajuste automático (mejor grado) o manual (grado polinómico).
+- Visualiza y edita la función ajustada, la tabla de valores y el análisis algebraico.
+- Haz clic en **Sugerir modelo con IA** para obtener una recomendación de Gemini.
+- Guarda el análisis y la sugerencia en Markdown.
+- Puedes graficar los datos y la función ajustada.
 
 ## Ejemplos visuales
 
@@ -276,6 +289,19 @@ Algoritmo AnalisisEstadistico
                 Permitir clic para ver todos los datos usados en la sustitución de la moda
             FinSi
         FinSi
+        Si el usuario selecciona "Crear función entre columnas" entonces
+            Mostrar diálogo de selección de columnas X e Y (numéricas)
+            Permitir ajuste automático (mejor grado) o manual (grado polinómico)
+            Ajustar función polinómica y mostrar:
+                - Fórmula editable
+                - Tabla editable de valores (X, Y estimado)
+                - Análisis algebraico (dominio, rango, puntos críticos, etc.)
+            Permitir sugerencia de modelo/fórmula con IA (Gemini)
+                - Mostrar sugerencia y explicación
+                - Permitir aceptar/rechazar sugerencia
+            Permitir guardar análisis y sugerencia en archivo Markdown
+            Permitir graficar datos y función ajustada
+        FinSi
     FinMientras
 FinAlgoritmo
 ```
@@ -288,44 +314,67 @@ flowchart TD
     B -->|CSV/Excel/Manual| C[Detectar tipo de variable]
     C --> D[Mostrar tabla de datos]
     D --> E[Revisar/corregir tipos]
-    E --> F{Seleccionar columna}
-    F -->|Cuantitativa| G[Permitir agrupación]
-    F -->|Cualitativa| H{¿Más de 15 valores únicos?}
+    E --> F{¿Qué análisis realizar?}
+    F -->|Análisis de columna| G{Seleccionar columna}
+    F -->|Crear función entre columnas| SeleccionarColumnasXY[Seleccionar columnas X e Y]
     
-    G --> I[Calcular todas las medidas]
-    I --> J[Mostrar tabla de frecuencias con formato mejorado]
-    J --> K[Mostrar medidas de tendencia y dispersión]
-    K --> K2[Mostrar columna de sustitución y botón para ver todos los datos]
-    K2 --> L[Mostrar histograma y polígono juntos]
+    G -->|Cuantitativa| H[Permitir agrupación]
+    G -->|Cualitativa| I{¿Más de 15 valores únicos?}
     
-    H -->|Sí| M[Seleccionar método de agrupación]
-    H -->|No| N[Frecuencias por valor]
+    H --> J[Calcular todas las medidas]
+    J --> K[Mostrar tabla de frecuencias con formato mejorado]
+    K --> L[Mostrar medidas de tendencia y dispersión]
+    L --> L2[Mostrar columna de sustitución y botón para ver todos los datos]
+    L2 --> M[Mostrar histograma y polígono juntos]
     
-    M --> M1[Por iniciales]
-    M --> M2[Por frecuencia]
-    M --> M3[Por similitud]
-    M --> M4[Por IA (Gemini)]
-    M --> M5[Personalizado]
+    I -->|Sí| N[Seleccionar método de agrupación]
+    I -->|No| O[Frecuencias por valor]
     
-    M4 --> M4A{¿Hay conexión a internet?}
-    M4A -->|Sí| M4B[Cargar API key]
-    M4A -->|No| M4C[Mostrar error]
-    M4B --> M4D[Llamar a Gemini API]
-    M4D --> M4E[Procesar respuesta]
-    M4E --> M4F[Aplicar agrupación sugerida]
+    N --> N1[Por iniciales]
+    N --> N2[Por frecuencia]
+    N --> N3[Por similitud]
+    N --> N4[Por IA (Gemini)]
+    N --> N5[Personalizado]
     
-    M1 & M2 & M3 & M4F & M5 --> O[Mostrar tabla de frecuencias agrupada con formato mejorado]
-    N --> P[Mostrar tabla de frecuencias con formato mejorado]
+    N4 --> N4A{¿Hay conexión a internet?}
+    N4A -->|Sí| N4B[Cargar API key]
+    N4A -->|No| N4C[Mostrar error]
+    N4B --> N4D[Llamar a Gemini API]
+    N4D --> N4E[Procesar respuesta]
+    N4E --> N4F[Aplicar agrupación sugerida]
     
-    O --> Q[Mostrar solo moda y sustitución]
-    P --> Q
-    Q --> Q2[Mostrar mensaje "No se puede calcular" en otras medidas]
-    Q2 --> Q3[Permitir ver todos los datos de la moda]
+    N1 & N2 & N3 & N4F & N5 --> P[Mostrar tabla de frecuencias agrupada con formato mejorado]
+    O --> Q[Mostrar tabla de frecuencias con formato mejorado]
     
-    L --> R{¿Otra columna?}
-    Q3 --> R
-    R -->|Sí| F
-    R -->|No| S[Fin]
+    P --> R[Mostrar solo moda y sustitución]
+    Q --> R
+    R --> R2[Mostrar mensaje "No se puede calcular" en otras medidas]
+    R2 --> R3[Permitir ver todos los datos de la moda]
+    
+    M --> S{¿Otra columna?}
+    R3 --> S
+    S -->|Sí| G
+    S -->|No| NuevoAnalisisPregunta{¿Nuevo análisis?}
+    
+    SeleccionarColumnasXY --> AjusteTipo{¿Ajuste automático o manual?}
+    AjusteTipo -->|Automático| AjustarPolinomioAuto[Ajustar mejor polinomio]
+    AjusteTipo -->|Manual| AjustarPolinomioManual[Ajustar polinomio de grado elegido]
+    AjustarPolinomioAuto & AjustarPolinomioManual --> MostrarFuncion[Mostrar fórmula editable, tabla y análisis algebraico]
+    MostrarFuncion --> SugerirIA{¿Sugerir modelo con IA?}
+    SugerirIA -->|Sí| ObtenerSugerenciaIA[Obtener sugerencia y explicación de Gemini]
+    ObtenerSugerenciaIA --> AceptarSugerenciaPregunta{¿Aceptar sugerencia?}
+    AceptarSugerenciaPregunta -->|Sí| ReemplazarFuncion[Reemplazar función y análisis]
+    AceptarSugerenciaPregunta -->|No| MostrarFuncion
+    SugerirIA -->|No| NoSugerenciaIA
+    ReemplazarFuncion & NoSugerenciaIA --> GuardarAnalisisPregunta{¿Guardar análisis?}
+    GuardarAnalisisPregunta -->|Sí| ExportarMarkdown[Exportar a Markdown]
+    GuardarAnalisisPregunta -->|No| NoExportar
+    ExportarMarkdown & NoExportar --> GraficarPregunta{¿Graficar?}
+    GraficarPregunta -->|Sí| MostrarGrafico[Mostrar gráfico]
+    GraficarPregunta -->|No| NuevoAnalisisPregunta
+    
+    NuevoAnalisisPregunta -->|Sí| F
+    NuevoAnalisisPregunta -->|No| FIN[Fin]
 ```
 
 ## Análisis de variables cualitativas
@@ -397,6 +446,15 @@ A continuación te muestro cómo sería la experiencia de uso del programa, paso
 9. **Cierre y nuevo análisis**
    - Puedo cargar nuevos datos o cambiar los tipos de variable en cualquier momento.
    - El programa está listo para repetir el análisis con cualquier columna o conjunto de datos.
+
+10. **Crear función entre columnas**
+    - Haz clic en **Crear función entre columnas**.
+    - Selecciona dos columnas numéricas (X e Y).
+    - Elige ajuste automático (mejor grado) o manual (grado polinómico).
+    - Visualiza y edita la función ajustada, la tabla de valores y el análisis algebraico.
+    - Haz clic en **Sugerir modelo con IA** para obtener una recomendación de Gemini.
+    - Guarda el análisis y la sugerencia en Markdown.
+    - Puedes graficar los datos y la función ajustada.
 
 ---
 
