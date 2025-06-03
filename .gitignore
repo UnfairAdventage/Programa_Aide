@@ -12,3 +12,4 @@ Task_List.md
 */__pycache__
 .env
 .gitignore
+Análisis_de_datos/*

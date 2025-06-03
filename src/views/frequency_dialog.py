@@ -235,7 +235,7 @@ class FrequencyDialog(QDialog):
         def safe_filename(s):
             return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
         filename = f"Explicacion_Formula_para_{safe_filename(self.column_name)}.md"
-        QMessageBox.information(self, "Explicación IA", f"La explicación se ha guardado en el archivo: {filename}")
+        QMessageBox.information(self, "Explicación IA", f"La explicación se ha guardado en el archivo: Análisis_de_datos/{filename}")
         # Guardar la respuesta en un archivo de texto
-        with open(filename, "w", encoding="utf-8") as f:
+        with open(f"Análisis_de_datos/{filename}", "w", encoding="utf-8") as f:
             f.write(text)

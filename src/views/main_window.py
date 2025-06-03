@@ -567,7 +567,7 @@ class MainWindow(QMainWindow):
         # Si hay sugerencia de IA, añádela al markdown
         if hasattr(self, 'ia_suggestion_markdown') and self.ia_suggestion_markdown:
             markdown_content += f"\n{self.ia_suggestion_markdown}\n"
-        with open(filename, "w", encoding="utf-8") as f:
+        with open(f"Análisis_de_datos/{filename}", "w", encoding="utf-8") as f:
             f.write(markdown_content)
             
         # Crear diálogo personalizado para mostrar la fórmula y el análisis

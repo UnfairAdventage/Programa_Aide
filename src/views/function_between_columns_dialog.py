@@ -353,9 +353,9 @@ class FunctionBetweenColumnsDialog(QDialog):
         def safe_filename(s):
             return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
         filename = f"Funcion_{safe_filename(self.x_col)}_vs_{safe_filename(self.y_col)}.md"
-        with open(filename, "w", encoding="utf-8") as f:
+        with open(f"Análisis_de_datos/{filename}", "w", encoding="utf-8") as f:
             f.write(markdown)
-        QMessageBox.information(self, "Guardado", f"El análisis se ha guardado en {filename}")
+        QMessageBox.information(self, "Guardado", f"El análisis se ha guardado en Análisis_de_datos/{filename}")
 
     def suggest_with_ia(self):
         """
