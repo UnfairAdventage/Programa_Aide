@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
-                             QGroupBox, QFormLayout, QTextEdit, QMessageBox)
-from PyQt6.QtCore import Qt
+                             QTableWidget, QTableWidgetItem, QHeaderView,
+                             QTextEdit, QMessageBox)
 from src.utils.statistics_utils import all_stats, format_substitution
 from src.utils.variable_detector import VariableType
 import pandas as pd

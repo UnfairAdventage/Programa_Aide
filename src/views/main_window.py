@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QFileDialog, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QComboBox, QInputDialog, QDialog, QLineEdit)
+                             QTableWidget, QTableWidgetItem, QComboBox, QDialog, QLineEdit)
 from PyQt6.QtCore import Qt
 from src.views.manual_input_dialog import ManualInputDialog
 from src.views.variable_type_dialog import VariableTypeDialog
@@ -9,7 +9,7 @@ from src.views.frequency_dialog import FrequencyDialog, group_by_initial_pairs
 from src.views.statistics_dialog import StatisticsDialog
 from src.models.data_model import DataModel
 from src.utils.variable_detector import VariableType
-from src.utils.plot_utils import plot_histogram, plot_frequency_polygon, plot_pie
+from src.utils.plot_utils import plot_histogram
 import matplotlib.pyplot as plt
 from src.views.qualitative_grouping_dialog import QualitativeGroupingDialog
 import numpy as np

@@ -1,12 +1,11 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QMessageBox)
 from PyQt6.QtCore import Qt
-from src.utils.data_grouping import group_by_initial, group_by_frequency, group_by_similarity, get_grouping_recommendation
+from src.utils.data_grouping import group_by_initial, group_by_frequency, get_grouping_recommendation
 import difflib
 from collections import Counter
 import socket
 from PyQt6.QtWidgets import QApplication
 import os
-import ast
 from dotenv import load_dotenv
 from google import genai
 from pydantic import BaseModel

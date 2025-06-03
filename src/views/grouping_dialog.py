@@ -1,9 +1,8 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QSpinBox, QDoubleSpinBox, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QCheckBox)
-from PyQt6.QtCore import Qt
+                             QTableWidgetItem, QCheckBox)
 import pandas as pd
-from src.utils.data_grouping import DataGrouping, ClassInterval
+from src.utils.data_grouping import DataGrouping
 
 class GroupingDialog(QDialog):
     def __init__(self, data: pd.Series, parent=None):

@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QComboBox, QTableWidget, QTableWidgetItem,
                              QHeaderView)
-from PyQt6.QtCore import Qt
 from src.utils.variable_detector import VariableType
 
 # Mapeo para mostrar solo dos tipos al usuario

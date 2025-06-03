@@ -1,7 +1,5 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QSpinBox, QTableWidget, QTableWidgetItem,
-                             QMessageBox)
-from PyQt6.QtCore import Qt
+                             QLabel, QSpinBox, QTableWidget, QTableWidgetItem)
 import pandas as pd
 
 class ManualInputDialog(QDialog):

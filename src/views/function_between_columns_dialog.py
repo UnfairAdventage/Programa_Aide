@@ -1,19 +1,19 @@
 import numpy as np
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QButtonGroup, QSpinBox, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit)
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QRadioButton, QFormLayout, QSpinBox, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QCheckBox, QDialogButtonBox)
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
 from dotenv import load_dotenv
 import os
 from google import genai
 from pydantic import BaseModel
-import sympy as sp
-from sympy.parsing.sympy_parser import parse_expr
-from sympy.parsing.latex import parse_latex
-from sympy.parsing.sympy_parser import standard_transformations, implicit_multiplication, implicit_application
+from src.utils.function_utils import (
+    prepare_data,
+    fit_polynomial,
+    format_polynomial_formula,
+    evaluate_modified_function,
+    analyze_polynomial_function
+)
 
+# Esta clase representa una ventana de diálogo para realizar funciones entre columnas en un modelo de datos.
 class FunctionBetweenColumnsDialog(QDialog):
     def __init__(self, data_model, parent=None):
         super().__init__(parent)
@@ -34,10 +34,18 @@ class FunctionBetweenColumnsDialog(QDialog):
         self.r2 = None
         self.ia_suggestion = None
         self.ia_suggestion_markdown = None
-        self.function_ajustada_explanation = None   
+        self.function_ajustada_explanation = None
+        self.undefined_vars = {}
+        self.data_for_plot = None
         self.init_ui()
 
     def init_ui(self):
+        """
+        La función `init_ui` establece la interfaz de usuario para una herramienta de análisis de datos, lo que permite a los usuarios seleccionar
+        Variables independientes y dependientes, ajustar modos de ajuste, editar fórmulas, analizar datos e interactuar
+        con modelos de aprendizaje automático.
+        : return: el método `init_ui` está devolviendo` none`.
+        """
         layout = QVBoxLayout(self)
         # Selección de columnas
         col_layout = QHBoxLayout()
@@ -48,6 +56,10 @@ class FunctionBetweenColumnsDialog(QDialog):
         self.y_combo = QComboBox()
         col_layout.addWidget(self.y_combo)
         layout.addLayout(col_layout)
+        # Checkbox para datos repetidos
+        self.repeated_checkbox = QCheckBox("Usar promedio para datos repetidos (sin duplicados)")
+        self.repeated_checkbox.setChecked(True)
+        layout.addWidget(self.repeated_checkbox)
         # Llenar combos con columnas numéricas
         num_cols = [c for c in self.df.columns if np.issubdtype(self.df[c].dtype, np.number)] if self.df is not None else []
         if not num_cols or len(num_cols) < 2:
@@ -113,63 +125,70 @@ class FunctionBetweenColumnsDialog(QDialog):
         self.y_combo.currentIndexChanged.connect(self.reset)
         self.reset()
 
-    def reset(self):
+    def clear_model_memory(self):
+        """Limpia la memoria del modelo para evitar confusiones con funciones anteriores"""
+        self.model = None
+        self.poly = None
+        self.coef_ = None
+        self.intercept_ = None
+        self.r2 = None
+        self.undefined_vars = {}
         self.formula_label.setText("")
+        self.formula_edit.setText("")
         self.analysis_label.setText("")
         self.table.clear()
-        self.ia_suggestion = None
-        self.ia_suggestion_markdown = None
 
     def fit_function(self):
+        """
+        El método `fit_function` se ajusta a una función polinomial a los datos, muestra la fórmula y el análisis
+        Resultados, y actualiza una tabla con los valores ajustados.
+        : return: el método `fit_function` no devuelve nada explícitamente, ya que no tiene un` retorno`
+        declaración al final de la función.
+        """
         x_col = self.x_combo.currentText()
         y_col = self.y_combo.currentText()
         if x_col == y_col:
             QMessageBox.warning(self, "Error", "Las columnas deben ser diferentes.")
             return
-        x = self.df[x_col].values.reshape(-1, 1)
-        y = self.df[y_col].values
-        # Ajuste automático o manual
-        if self.auto_radio.isChecked():
-            best_r2 = -np.inf
-            best_deg = 1
-            for deg in range(1, 6):
-                poly = PolynomialFeatures(degree=deg, include_bias=False)
-                X_poly = poly.fit_transform(x)
-                model = LinearRegression().fit(X_poly, y)
-                y_pred = model.predict(X_poly)
-                r2 = r2_score(y, y_pred)
-                if r2 > best_r2:
-                    best_r2 = r2
-                    best_deg = deg
-                    best_model = model
-                    best_poly = poly
-            self.degree = best_deg
-            self.model = best_model
-            self.poly = best_poly
-            self.r2 = best_r2
-        else:
-            deg = self.degree_spin.value()
-            poly = PolynomialFeatures(degree=deg, include_bias=False)
-            X_poly = poly.fit_transform(x)
-            model = LinearRegression().fit(X_poly, y)
-            y_pred = model.predict(X_poly)
-            self.degree = deg
-            self.model = model
-            self.poly = poly
-            self.r2 = r2_score(y, y_pred)
+
+        # Limpiar memoria del modelo anterior
+        self.clear_model_memory()
+
+        # Preparar datos usando las utilidades
+        x, y, self.data_for_plot = prepare_data(
+            self.df, 
+            x_col, 
+            y_col, 
+            self.repeated_checkbox.isChecked()
+        )
+
+        # Ajustar polinomio usando las utilidades
+        fit_result = fit_polynomial(
+            x, 
+            y, 
+            degree=self.degree_spin.value() if not self.auto_radio.isChecked() else None,
+            auto_fit=self.auto_radio.isChecked()
+        )
+
+        # Guardar resultados
+        self.model = fit_result['model']
+        self.poly = fit_result['poly']
+        self.degree = fit_result['degree']
+        self.r2 = fit_result['r2']
+        self.coef_ = fit_result['coef']
+        self.intercept_ = fit_result['intercept']
         self.x_col = x_col
         self.y_col = y_col
         self.x_vals = x.flatten()
         self.y_vals = y
-        self.coef_ = self.model.coef_.tolist()
-        self.intercept_ = self.model.intercept_
-        # Mostrar fórmula
-        terms = [f"{self.coef_[i]:+.4f}x^{i+1}" for i in range(len(self.coef_)-1, -1, -1)]
-        formula_latex = f"f(x) = {' '.join(terms)} {self.intercept_:+.4f}"
+
+        # Formatear fórmula usando las utilidades
+        formula_latex, self.undefined_vars = format_polynomial_formula(self.coef_, self.intercept_)
         self.formula_label.setText(f"<b>Función ajustada:</b> <br><pre>$$\displaystyle {formula_latex}$$</pre><br><b>R²:</b> {self.r2:.4f} (grado {self.degree})")
         self.formula_edit.setText(formula_latex)
-        self.formula_ajustada_latex = formula_latex  # Guardar para Markdown
-        # Tabla editable
+        self.formula_ajustada_latex = formula_latex
+
+        # Actualizar tabla
         self.table.setRowCount(len(self.x_vals))
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels([self.x_col, f"{self.y_col} estimado"])
@@ -179,21 +198,37 @@ class FunctionBetweenColumnsDialog(QDialog):
             self.table.setItem(i, 0, x_item)
             self.table.setItem(i, 1, y_item)
         self.table.itemChanged.connect(self.update_table)
-        # Análisis algebraico
-        analysis = self.parent.data_model.analyze_polynomial_function(self.coef_, self.intercept_)
+
+        # Análisis algebraico usando las utilidades
+        analysis = analyze_polynomial_function(self.coef_, self.intercept_)
         analysis_text = f"<b>Dominio:</b> {analysis['Dominio']}<br>"
         analysis_text += f"<b>Rango:</b> {analysis['Rango']}<br>"
         analysis_text += f"<b>Puntos críticos:</b> {', '.join(f'({x:.4f}, {y:.4f})' for x, y in analysis['Puntos Críticos']) if analysis['Puntos Críticos'] else 'No hay'}<br>"
         analysis_text += f"<b>Ordenada al origen:</b> {analysis['Ordenada al Origen']:.4f}<br>"
         analysis_text += f"<b>Comportamiento:</b> {'; '.join(analysis['Comportamiento'])}"
         self.analysis_label.setText(analysis_text)
-        self.analysis_text = analysis_text  # Guardar para Markdown
+        self.analysis_text = analysis_text
 
     def predict_y(self, xval):
-        X_poly = self.poly.transform(np.array([[float(xval)]]))
-        return self.model.predict(X_poly)[0]
+        """
+        El método `predict_y` predice el valor de y para un x dado.
+        : param xval: el valor de x para el que se desea predecir el valor de y
+        : return: el método `predict_y` devuelve el valor de y predicho para el x dado
+        """
+        try:
+            X_poly = self.poly.transform(np.array([[float(xval)]]))
+            return self.model.predict(X_poly)[0]
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error al predecir valor: {str(e)}")
+            return 0
 
     def update_table(self, item):
+        """
+        El método `update_table` actualiza una tabla calculando y mostrando un valor y predicho basado en un valor x dado.
+        : param item: El método `update_table` toma un `item` como parámetro. Este `item` se espera que sea
+        un objeto QTableWidgetItem que representa una celda en una tabla. El método luego extrae la información de la fila y la columna
+        de este elemento para realizar ciertas operaciones en la tabla
+        """
         row = item.row()
         col = item.column()
         if col == 0:
@@ -206,7 +241,128 @@ class FunctionBetweenColumnsDialog(QDialog):
             except Exception:
                 pass
 
+    def plot_function(self):
+        """
+        El método `plot_function` gráfica una función ajustada y una función modificada si existe,
+        basado en los datos y fórmulas proporcionados.
+        : return: el método `plot_function` no devuelve nada explícitamente, ya que no tiene un` retorno`
+        declaración al final de la función.
+        """
+        if self.x_col is None or self.y_col is None or self.model is None or self.poly is None:
+            QMessageBox.warning(self, "Error", "Primero ajusta una función para poder graficar.")
+            return
+            
+        try:
+            # Usar datos según el checkbox
+            x_plot_data, y_plot_data = self.data_for_plot
+            x_plot = np.linspace(min(x_plot_data), max(x_plot_data), 200)
+            
+            plt.figure(figsize=(8, 5))
+            
+            # Graficar datos originales o agrupados
+            if self.repeated_checkbox.isChecked():
+                plt.scatter(x_plot_data, y_plot_data, color='blue', label='Datos sin repetir')
+            else:
+                plt.scatter(x_plot_data, y_plot_data, color='blue', label='Datos originales')
+            
+            # Graficar función ajustada
+            X_plot_poly = self.poly.transform(x_plot.reshape(-1, 1))
+            y_plot = self.model.predict(X_plot_poly)
+            plt.plot(x_plot, y_plot, color='red', label='Función ajustada')
+            
+            # Graficar función modificada si existe
+            modified_formula = self.formula_edit.text().strip()
+            if modified_formula.replace(' ', '') == self.formula_edit.placeholderText().replace(' ', ''):
+                y_modified = self.model.predict(self.poly.transform(x_plot.reshape(-1, 1)))
+            else:
+                # Si hay variables indefinidas, pedir valores al usuario
+                undefined_in_formula = [v for v in self.undefined_vars if v in modified_formula]
+                if undefined_in_formula:
+                    values, ok = self.ask_for_undefined_vars(undefined_in_formula)
+                    if not ok:
+                        return
+                    for v, val in values.items():
+                        self.undefined_vars[v] = float(val)
+                
+                try:
+                    y_modified = evaluate_modified_function(modified_formula, x_plot, self.undefined_vars)
+                except ValueError as e:
+                    QMessageBox.warning(self, "Error", str(e))
+                    y_modified = self.model.predict(self.poly.transform(x_plot.reshape(-1, 1)))
+            
+            plt.plot(x_plot, y_modified, color='green', linestyle='--', label='Función modificada')
+            plt.xlabel(self.x_col)
+            plt.ylabel(self.y_col)
+            plt.title(f'{self.y_col} vs {self.x_col}')
+            plt.legend()
+            plt.tight_layout()
+            plt.show(block=False)
+            
+        except Exception as e:
+            print(f"Error general al graficar: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al graficar: {str(e)}")
+
+    def ask_for_undefined_vars(self, var_list):
+        """
+        El método `ask_for_undefined_vars` muestra un diálogo para que el usuario asigne valores a variables indefinidas.
+        : param var_list: El método `ask_for_undefined_vars` toma un `var_list` como parámetro. Este `var_list` se espera que sea
+        una lista de variables indefinidas. El método luego muestra un diálogo para que el usuario asigne valores a estas variables.
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Asignar valores a variables indefinidas")
+        layout = QFormLayout(dialog)
+        edits = {}
+        for var in var_list:
+            edit = QLineEdit()
+            edit.setPlaceholderText(f"Valor para {var}")
+            layout.addRow(f"{var}", edit)
+            edits[var] = edit
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        dialog.setLayout(layout)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            values = {var: edits[var].text() for var in var_list}
+            return values, True
+        else:
+            return {}, False
+
+    def reset(self):
+        self.formula_label.setText("")
+        self.analysis_label.setText("")
+        self.table.clear()
+        self.ia_suggestion = None
+        self.ia_suggestion_markdown = None
+
+    def save_markdown(self):
+        import re
+        xvals = [self.table.item(i, 0).text() for i in range(self.table.rowCount())]
+        yvals = [self.table.item(i, 1).text() for i in range(self.table.rowCount())]
+        formula = self.formula_edit.text() if self.formula_edit.text().strip() else self.formula_label.text()
+        # Guardar ambas funciones y análisis
+        markdown = f"# Análisis de función entre columnas\n\n## Función ajustada\n\n$$\displaystyle {getattr(self, 'formula_ajustada_latex', '')}$$\n\n{getattr(self, 'analysis_text', '')}\n"
+        if hasattr(self, 'ia_suggestion') and self.ia_suggestion:
+            markdown += f"\n## Función sugerida por IA o modificada\n\n$$\displaystyle {formula}$$\n\n{getattr(self, 'analysis_ia_text', '')}\n"
+        markdown += f"\n## Tabla de valores\n| {self.x_col} | {self.y_col} estimado |\n|---|---|\n" + "\n".join(f"| {x} | {y} |" for x, y in zip(xvals, yvals)) + f"\n"
+        if self.ia_suggestion_markdown:
+            markdown += f"\n{self.ia_suggestion_markdown}\n"
+        if self.function_ajustada_explanation:
+            markdown += f"\n{self.function_ajustada_explanation}\n"
+        def safe_filename(s):
+            return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
+        filename = f"Funcion_{safe_filename(self.x_col)}_vs_{safe_filename(self.y_col)}.md"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(markdown)
+        QMessageBox.information(self, "Guardado", f"El análisis se ha guardado en {filename}")
+
     def suggest_with_ia(self):
+        """
+        El método `suggest_with_ia` sugiere un modelo con IA.
+        : return: el método `suggest_with_ia` no devuelve nada explícitamente, ya que no tiene un` retorno`
+        declaración al final de la función.
+        """
         # Lógica para sugerir modelo con Gemini AI
         x_col = self.x_combo.currentText()
         y_col = self.y_combo.currentText()
@@ -217,6 +373,11 @@ class FunctionBetweenColumnsDialog(QDialog):
         if not api_key:
             QMessageBox.critical(self, "Error IA", "No se encontró GEMINI_API_KEY en el .env")
             return
+        """
+        La clase `ModelSuggestion` en Python se utiliza para almacenar información sobre sugerencias de
+        modelos matemáticos generadas por una IA, incluyendo el tipo de modelo, la fórmula sugerida y una
+        explicación.
+        """
         class ModelSuggestion(BaseModel):
             model_type: str
             formula: str
@@ -290,112 +451,12 @@ class FunctionBetweenColumnsDialog(QDialog):
             self.analysis_ia_text = "<b>Error al analizar la función sugerida por IA.</b>"
             QMessageBox.critical(self, "Error IA", f"Error al obtener sugerencia de IA: {str(e)}")
 
-    def save_markdown(self):
-        import re
-        xvals = [self.table.item(i, 0).text() for i in range(self.table.rowCount())]
-        yvals = [self.table.item(i, 1).text() for i in range(self.table.rowCount())]
-        formula = self.formula_edit.text() if self.formula_edit.text().strip() else self.formula_label.text()
-        # Guardar ambas funciones y análisis
-        markdown = f"# Análisis de función entre columnas\n\n## Función ajustada\n\n$$\displaystyle {getattr(self, 'formula_ajustada_latex', '')}$$\n\n{getattr(self, 'analysis_text', '')}\n"
-        if hasattr(self, 'ia_suggestion') and self.ia_suggestion:
-            markdown += f"\n## Función sugerida por IA o modificada\n\n$$\displaystyle {formula}$$\n\n{getattr(self, 'analysis_ia_text', '')}\n"
-        markdown += f"\n## Tabla de valores\n| {self.x_col} | {self.y_col} estimado |\n|---|---|\n" + "\n".join(f"| {x} | {y} |" for x, y in zip(xvals, yvals)) + f"\n"
-        if self.ia_suggestion_markdown:
-            markdown += f"\n{self.ia_suggestion_markdown}\n"
-        if self.function_ajustada_explanation:
-            markdown += f"\n{self.function_ajustada_explanation}\n"
-        def safe_filename(s):
-            return re.sub(r'[^a-zA-Z0-9_-]', '_', str(s))
-        filename = f"Funcion_{safe_filename(self.x_col)}_vs_{safe_filename(self.y_col)}.md"
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(markdown)
-        QMessageBox.information(self, "Guardado", f"El análisis se ha guardado en {filename}")
-
-    def plot_function(self):
-        if self.x_col is None or self.y_col is None or self.model is None or self.poly is None:
-            QMessageBox.warning(self, "Error", "Primero ajusta una función para poder graficar.")
-            return
-            
-        try:
-            x = self.df[self.x_col].values
-            y = self.df[self.y_col].values
-            x_plot = np.linspace(min(x), max(x), 200)
-            
-            # Crear figura en un nuevo proceso
-            plt.figure(figsize=(8, 5))
-            
-            # Graficar datos originales
-            plt.scatter(x, y, color='blue', label='Datos originales')
-            
-            # Graficar función ajustada
-            X_plot_poly = self.poly.transform(x_plot.reshape(-1, 1))
-            y_plot = self.model.predict(X_plot_poly)
-            plt.plot(x_plot, y_plot, color='red', label='Función ajustada')
-            
-            # Graficar función modificada si existe
-            modified_formula = self.formula_edit.text().strip()
-            if modified_formula.replace(' ', '') == self.formula_edit.placeholderText().replace(' ', ''):
-                # Graficar usando el modelo ajustado (scikit-learn)
-                y_modified = self.model.predict(self.poly.transform(x_plot.reshape(-1, 1)))
-            else:
-                # Graficar usando la expresión modificada (SymPy)
-                import re
-                # Limpiar la fórmula
-                formula = modified_formula
-                # Eliminar prefijos comunes como f(x)= o y=
-                formula = re.sub(r'^(f\(x\)|y)\s*=\s*', '', formula, flags=re.IGNORECASE)
-                # Reemplazar ^ por **
-                formula = formula.replace('^', '**')
-                # Reemplazar comas por puntos
-                formula = formula.replace(',', '.')
-                # Eliminar espacios
-                formula = formula.replace(' ', '')
-
-                # Crear símbolo x
-                x_sym = sp.Symbol('x')
-
-                # Crear diccionario de transformaciones
-                transformations = (
-                    standard_transformations + 
-                    (implicit_multiplication, implicit_application)
-                )
-
-                # Parsear la expresión con transformaciones
-                expr = parse_expr(
-                    formula,
-                    transformations=transformations,
-                    local_dict={'x': x_sym}
-                )
-
-                # Simplificar la expresión
-                expr = sp.simplify(expr)
-
-                # Crear función lambda para evaluación numérica
-                f = sp.lambdify(x_sym, expr, 'numpy')
-
-                # Evaluar la función
-                y_modified = f(x_plot)
-            
-            plt.plot(x_plot, y_modified, color='green', linestyle='--', label='Función modificada')
-            # Imprimir funcion ajustada y modificada
-            print(f"Función ajustada: {self.formula_label.text()}")
-            print(f"Función modificada: {modified_formula}")
-            
-            plt.xlabel(self.x_col)
-            plt.ylabel(self.y_col)
-            plt.title(f'{self.y_col} vs {self.x_col}')
-            plt.legend()
-            plt.tight_layout()
-            
-            # Mostrar la gráfica en un proceso separado
-            plt.show(block=False)
-            
-        except Exception as e:
-            print(f"Error general al graficar: {str(e)}")
-            QMessageBox.critical(self, "Error", f"Error al graficar: {str(e)}") 
-
     def analyze_ajustada_with_ia(self):
-        """Envía la función ajustada y los datos a la IA para que explique cada término de la función ajustada."""
+        """
+        El método `analyze_ajustada_with_ia` envía la función ajustada y los datos a la IA para que explique cada término de la función ajustada.
+        : return: el método `analyze_ajustada_with_ia` no devuelve nada explícitamente, ya que no tiene un` retorno`
+        declaración al final de la función.
+        """
         x_col = self.x_col
         y_col = self.y_col
         x = self.df[x_col].values.tolist()
